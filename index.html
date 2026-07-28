@@ -886,6 +886,16 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .pin.avalider{opacity:.62;border-style:dashed}
   /* teinte argile du logo Claude, et non l'accent ambre du groupe */
   .ico-claude{color:#D97757;margin-right:7px;flex:none}
+  /* sous-groupes par categorie a l'interieur des propositions */
+  .sous-groupe{border-top:1px solid var(--trait)}
+  .sous-tete{
+    display:flex;align-items:center;gap:9px;padding:11px 13px 11px 19px;min-height:44px;
+    cursor:pointer;list-style:none;background:var(--fond);
+    font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--encre-2);
+  }
+  .sous-tete::-webkit-details-marker{display:none}
+  details[open] > .sous-tete .chevron{transform:rotate(-135deg);margin-top:2px}
   .rang details[open] > .rang-tete{background:var(--fond)}
   .rang details[open] .rang-nom{color:var(--cat)}
   .fiche{padding:2px 13px 13px;background:var(--fond)}
@@ -1038,8 +1048,12 @@ svg.leaflet-image-layer.leaflet-interactive path {
   </div>
   <div class="origines" id="origines">
     <span class="origines-titre">Trajets depuis</span>
-    <button class="chip chip-origine" data-origine="location" aria-pressed="false">🏠 Ma location</button>
-    <button class="chip chip-origine" data-origine="moi" aria-pressed="false">📍 Ma position GPS</button>
+    <!-- libelles courts a l'ecran, intitules complets pour les lecteurs d'ecran,
+         qui peuvent annoncer un bouton hors du contexte de "Trajets depuis" -->
+    <button class="chip chip-origine" data-origine="location" aria-pressed="false"
+            aria-label="Trajets depuis ma location">🏠 Location</button>
+    <button class="chip chip-origine" data-origine="moi" aria-pressed="false"
+            aria-label="Trajets depuis ma position GPS">📍 GPS</button>
   </div>
   <p class="geo-etat" id="geo-etat" role="status"></p>
   <details class="reglages" id="reglages">
@@ -1291,7 +1305,167 @@ const LIEUX = [
   {cat:"sortie", nom:"Polder de Mousterlin, sentier GR34", style:"Boucle nature à plat", avalider:true,
    adr:"Parking du Grand Large, 50 route du Grand Large, 29170 Fouesnant",
    note:"Marais protégé, dunes et Mer Blanche, sur une portion du GR34, avec panneaux sur la faune et la flore. Circuit balisé d'environ 11 km pour 3h15, qui se coupe facilement en version courte le long du polder avec de jeunes enfants. Attention, le numéro 48 de la même rue est un camping.",
-   lat:47.84864, lng:-4.03689}
+   lat:47.84864, lng:-4.03689},
+
+  {cat:"resto", nom:"La Longère", style:"Table traditionnelle", avalider:true,
+   adr:"5 chemin de Ker an Braz, 29170 Fouesnant",
+   note:"La table assise du bourg de Fouesnant, à quelques minutes de Beg Meil. Carte traditionnelle de saison faite maison, options végétariennes, formule du midi annoncée à partir de 17 euros. Terrasse ombragée à l'écart de la route, jardin et parking privé.",
+   lat:47.89066, lng:-4.01286},
+
+  {cat:"resto", nom:"Le Drennec, cantine et buvette", style:"Bistrot de campagne", avalider:true,
+   adr:"45 route de la Chapelle, 29950 Clohars-Fouesnant",
+   note:"Petit bistrot de campagne repris début 2025, face à la chapelle du Drennec. Ambiance simple de cantine, cuisine de produits de saison, carte de vins et de bières. Plutôt orienté déjeuner, et la salle est petite : réserver en août.",
+   lat:47.90974, lng:-4.07236},
+
+  {cat:"resto", nom:"Crêperie Chez Mimi", style:"Crêperie", avalider:true,
+   adr:"24 lieu-dit Moulin du Pont, 29170 Pleuven",
+   note:"Crêperie familiale ouverte depuis 1981, tenue par la fille de la fondatrice, sur la route entre Quimper et Fouesnant. Grande salle avec cheminée, terrasse couverte et aire de jeux pour les enfants.",
+   lat:47.93162, lng:-4.06966},
+
+  {cat:"resto", nom:"Crêperie de la Baie", style:"Crêperie", avalider:true,
+   adr:"19 rue Charles de Gaulle, 29940 La Forêt-Fouesnant",
+   note:"Crêperie en plein centre du bourg, avec une terrasse d'une vingtaine de tables. Service le midi toute la semaine, et le soir les vendredis et samedis.",
+   lat:47.90830, lng:-3.97932},
+
+  {cat:"resto", nom:"Le Café du Port", style:"Fruits de mer, vue port", avalider:true,
+   adr:"2 quai Jacques de Thézac, Sainte-Marine, 29120 Combrit",
+   note:"Table posée sur le quai du petit port de Sainte-Marine, à l'embouchure de l'Odet. Vue sur les bateaux depuis la terrasse couverte, carte de fruits de mer, poissons et grillades. Service en continu, ce qui évite les horaires stricts avec de jeunes enfants.",
+   lat:47.87416, lng:-4.12102},
+
+  {cat:"resto", nom:"Les Sables Blancs", style:"Brasserie sur la plage", avalider:true,
+   adr:"45 rue des Sables Blancs, 29900 Concarneau",
+   note:"Restaurant d'hôtel construit directement sur la plage, avec baies vitrées, terrasse face à l'océan et accès au sable. Carte mêlant spécialités marines et brasserie. Parking gratuit sur place, appréciable en août quand le centre de Concarneau est saturé.",
+   lat:47.88163, lng:-3.93267},
+
+  {cat:"commerce", nom:"Plaisirs et Délices", style:"Épicerie fine", avalider:true,
+   adr:"13 rue de Cornouaille, 29170 Fouesnant",
+   note:"Épicerie fine en plein bourg : huiles, épices, condiments, produits de la mer, confitures, miels, biscuits et chocolats, avec une grande sélection de thés et de cafés. L'adresse des paniers garnis de fin de séjour.",
+   lat:47.89381, lng:-4.01131},
+
+  {cat:"commerce", nom:"Les Poissons de Nicolas", style:"Poissonnerie traiteur", avalider:true,
+   adr:"42 allée Ponterec Nevez, 29940 La Forêt-Fouesnant",
+   note:"Poissonnerie traiteur : poisson entier ou en filets, coquillages et crustacés, mais aussi plateaux de fruits de mer et préparations prêtes à servir, pour cuisiner soi-même ou pour un dîner sans effort.",
+   lat:47.90687, lng:-3.99045},
+
+  {cat:"commerce", nom:"Cave Les Vins du Globe", style:"Caviste", avalider:true,
+   adr:"11 quai des Commerces, Port-la-Forêt, 29940 La Forêt-Fouesnant",
+   note:"Caviste tenu par un sommelier : vins de toutes régions, cubis pratiques pour une maison de vacances, bières de brasseries bretonnes et rayon épicerie fine.",
+   lat:47.89908, lng:-3.97243},
+
+  {cat:"commerce", nom:"Cidre Séhédic", style:"Cidrerie bio", avalider:true,
+   adr:"1 route de Fouesnant, 29940 La Forêt-Fouesnant",
+   note:"Cidrerie familiale bio installée depuis les années 1950, en bord de route à l'entrée de La Forêt-Fouesnant. Cave, dégustation et vente directe : cidre, jus de pomme, pommeau, vinaigre et eau-de-vie.",
+   lat:47.90668, lng:-3.98878},
+
+  {cat:"commerce", nom:"Biscuiterie François Garrec", style:"Biscuiterie, visite d'atelier", avalider:true,
+   adr:"9 rue de Kergaouen, 29950 Bénodet",
+   note:"Biscuiterie familiale créée en 1967, qui fabrique sur place crêpes dentelle, galettes et palets pur beurre, gâteaux bretons, far et kouign-amann. En juillet et août, visite guidée gratuite de l'atelier, une demi-heure, sans réservation.",
+   lat:47.87688, lng:-4.07609},
+
+  {cat:"commerce", nom:"L'Atelier n5, chocolatier glacier", style:"Chocolatier glacier", avalider:true,
+   adr:"5 avenue Pierre Guéguin, 29900 Concarneau",
+   note:"Chocolaterie artisanale : pralines, ganaches, tablettes d'origine et confiseries. D'avril à septembre elle vend aussi ses glaces, en pots ou en boules, ce qui en fait une halte facile avec des enfants.",
+   lat:47.87263, lng:-3.91791},
+
+  {cat:"commerce", nom:"Conserverie Courtin", style:"Conserverie, visite libre", avalider:true,
+   adr:"Zone de Kerouel, 29910 Trégunc",
+   note:"Conserverie de poisson familiale fondée en 1893, la plus ancienne du secteur de Concarneau. Espace de découverte de 200 m², visite libre et gratuite, fabrication visible en semaine, dégustation offerte et vente au prix de fabrique.",
+   lat:47.85813, lng:-3.86875},
+
+  {cat:"commerce", nom:"Marché du lundi de Bénodet", style:"Marché du lundi matin", avalider:true,
+   adr:"Place du Ménéyer, 29950 Bénodet",
+   note:"Marché hebdomadaire de Bénodet, une cinquantaine d'exposants à l'année et bien plus en saison, à une vingtaine de minutes. Il tombe le lundi matin, donc il ne double pas celui du vendredi à Fouesnant.",
+   lat:47.87344, lng:-4.10986},
+
+  {cat:"commerce", nom:"Marché du jeudi de Pont-l'Abbé", style:"Marché du jeudi matin", avalider:true,
+   adr:"Place Gambetta et place de la République, 29120 Pont-l'Abbé",
+   note:"Le plus gros marché du pays Bigouden : l'alimentaire place Gambetta, le reste place de la République, plus les halles couvertes et leurs commerçants permanents juste à côté. Une bonne demi-heure de route, donc une vraie sortie de matinée.",
+   lat:47.86576, lng:-4.22379},
+
+  {cat:"plage", nom:"Plage du Cap-Coz", style:"Plage abritée, Fouesnant", avalider:true,
+   adr:"Avenue de la Pointe du Cap Coz, Cap-Coz, 29170 Fouesnant",
+   note:"Plage abritée de l'isthme du Cap Coz, surveillée du 4 juillet au 30 août, de 13h30 à 19h30. Tiralo et tapis d'accès pour les personnes à mobilité réduite.",
+   lat:47.88812, lng:-3.98212},
+
+  {cat:"plage", nom:"Plage de Kerambigorn", style:"Plage, Beg Meil", avalider:true,
+   adr:"Chemin de Kerambigorn, Beg-Meil, 29170 Fouesnant",
+   note:"La plage surveillée la plus proche de Beg Meil, labellisée Pavillon Bleu. Poste de secours en juillet et août, chaises de plage adaptées et aire de jeux. Bot Conan, Kerveltrec et la plage des Dunes, elles, ne sont pas surveillées.",
+   lat:47.85649, lng:-3.99451},
+
+  {cat:"plage", nom:"Plage de Cleut Rouz", style:"Plage, Beg Meil", avalider:true,
+   adr:"Coat Clevarec, Beg-Meil, 29170 Fouesnant",
+   note:"Sable fin bordé de dunes sur plusieurs kilomètres, entre deux pointes. Surveillée en juillet et août, poste de secours installé dans la dune, Pavillon Bleu, parking gratuit à l'accès et sanitaires. Son nom officiel est plage de Maner Coat Clevarec.",
+   lat:47.85503, lng:-4.01300},
+
+  {cat:"plage", nom:"Plage de Kerler", style:"Plage, Mousterlin", avalider:true,
+   adr:"Hent Kerler, Mousterlin, 29170 Fouesnant",
+   note:"Longue plage de sable fin en pente très douce, la plus rassurante du secteur pour de jeunes enfants qui entrent dans l'eau. Surveillée en juillet et août, poste de secours à l'accès de Kerler.",
+   lat:47.86707, lng:-4.05145},
+
+  {cat:"plage", nom:"Plage de la Pointe de Mousterlin", style:"Plage, Mousterlin", avalider:true,
+   adr:"Route de la Pointe de Mousterlin, 29170 Fouesnant",
+   note:"Plage de la pointe, au départ du sentier du polder et du GR34, avec vue dégagée sur la baie. Attention, elle n'est pas surveillée : les quatre postes de secours de Fouesnant sont au Cap Coz, à Kerambigorn, à Cleut Rouz et à Kerler.",
+   lat:47.85424, lng:-4.04053},
+
+  {cat:"plage", nom:"Plage de Kerleven", style:"Plage, La Forêt-Fouesnant", avalider:true,
+   adr:"Rue de la Mer, Kerleven, 29940 La Forêt-Fouesnant",
+   note:"Plus d'un kilomètre de sable fin, largement abritée des vents. Surveillée en juillet et août, avec poste de secours, tiralo et hippocampe. Elle fait face au Cap Coz, sur l'autre rive de la baie.",
+   lat:47.90517, lng:-3.97108},
+
+  {cat:"plage", nom:"Plage du Trez", style:"Plage, Bénodet", avalider:true,
+   adr:"Avenue de la Plage, 29950 Bénodet",
+   note:"Grande plage de station balnéaire, surveillée tous les jours en juillet et août. Poste de secours, douches, eau potable, WC et club de plage pour les enfants. Pavillon Bleu depuis 2024 et label Handiplage depuis 2025.",
+   lat:47.87393, lng:-4.10968},
+
+  {cat:"plage", nom:"Plage des Sables Blancs", style:"Plage, Concarneau", avalider:true,
+   adr:"Rue des Sables Blancs, 29900 Concarneau",
+   note:"Plage urbaine surveillée en juillet et août, avec poste de secours, douches, WC, aire de jeux, bar et restaurant. Deux tiralos disponibles auprès des sauveteurs.",
+   lat:47.88204, lng:-3.93253},
+
+  {cat:"plage", nom:"Plage du Treustel", style:"Plage, Combrit", avalider:true,
+   adr:"Parking de Treustel Plage, Le Treustel, 29120 Combrit",
+   note:"Une des rares plages de la rive ouest de l'Odet surveillée tous les jours en juillet et août. Poste de secours communal, parkings aménagés et WC aux accès.",
+   lat:47.85543, lng:-4.15061},
+
+  {cat:"plage", nom:"Plage de Langoz", style:"Plage, Loctudy", avalider:true,
+   adr:"Boulevard de la Mer, 29750 Loctudy",
+   note:"Plage plate et abritée d'environ 550 mètres, surveillée en juillet et août. Poste de secours, douches, WC, parking et aire de jeux juste derrière.",
+   lat:47.82777, lng:-4.16325},
+
+  {cat:"sortie", nom:"Manoir de Squividan", style:"Manoir, peinture et parc", avalider:true,
+   adr:"Route de Squividan, 29950 Clohars-Fouesnant",
+   note:"Manoir légué au Département, qui expose les peintures d'Émile Simon et de Madeleine Fié-Fieux, avec un parc que l'on parcourt librement. C'est la sortie culturelle la plus proche de Beg Meil, une dizaine de minutes en voiture.",
+   lat:47.91133, lng:-4.07714},
+
+  {cat:"sortie", nom:"Centre aquatique Les Balnéides", style:"Centre aquatique", avalider:true,
+   adr:"51 allée de Loc'Hilaire, 29170 Fouesnant",
+   note:"Piscine de loisirs au bourg de Fouesnant, à moins de dix minutes de Beg Meil. Eau à 29 degrés, toboggan, pataugeoire, jeux d'eau et espace détente. La solution de repli les jours où la pluie ou le vent d'ouest rend les plages impraticables.",
+   lat:47.89237, lng:-4.00556},
+
+  {cat:"sortie", nom:"Centre nautique du Cap Coz", style:"Location et cours de nautisme", avalider:true,
+   adr:"1 chemin de Kersentic, Cap-Coz, 29170 Fouesnant",
+   note:"Base nautique de trois hectares au bord de la plage du Cap Coz. Location et cours de kayak de mer, stand-up paddle, planche à voile, catamaran et dériveur, avec des formules famille et un accueil des enfants dès 4 ans.",
+   lat:47.88702, lng:-3.98902},
+
+  {cat:"sortie", nom:"Glaz Aventures", style:"Accrobranche et paintball", avalider:true,
+   adr:"Hent Kastell, 29950 Clohars-Fouesnant",
+   note:"Parc accrobranche à un quart d'heure de Beg Meil : dix parcours dans les arbres dès 3 ans sur ligne de vie continue, tyroliennes et labyrinthe géant. Paintball pour les plus grands, dès 9 ans en mini-paintball.",
+   lat:47.89878, lng:-4.05943},
+
+  {cat:"sortie", nom:"Parc botanique de Cornouaille", style:"Jardin remarquable et minéraux", avalider:true,
+   adr:"Kerlever, 29120 Combrit",
+   note:"Parc de 4,5 hectares labellisé Jardin remarquable, avec un jardin anglais et un jardin aquatique exotique. Le musée des Minéraux installé sur place donne aux enfants un objectif pendant que les parents regardent les collections.",
+   lat:47.88666, lng:-4.18753},
+
+  {cat:"sortie", nom:"Musée de Pont-Aven", style:"Musée de peinture", avalider:true,
+   adr:"Place Julia, 29930 Pont-Aven",
+   note:"Le musée raconte l'école de Pont-Aven et Gauguin, dans la ville même où les peintres travaillaient. Gratuit pour les moins de 18 ans. C'est la vraie visite d'intérieur du carnet, pour un jour de pluie.",
+   lat:47.85543, lng:-3.74713},
+
+  {cat:"sortie", nom:"Village de chaumières de Kerascoët", style:"Village de chaumières", avalider:true,
+   adr:"Kerascoët, 29920 Névez",
+   note:"Hameau de maisons de granit aux toits de chaume, avec puits et four à pain sur la place, qui se visite librement et gratuitement à pied, en une heure. Accès par la D77 depuis le bourg de Névez vers Port-Manec'h, parking gratuit à l'entrée du hameau.",
+   lat:47.79558, lng:-3.77577}
 ];
 
 /* ----- carte ----- */
@@ -1532,7 +1706,7 @@ function poserPosition(lat, lng, libelle){
 function parGPS(){
   chips("moi");
   if(!navigator.geolocation){
-    etatGeo("Cet appareil ne fournit pas de position. Utilisez plutôt Ma location, en saisissant son adresse.");
+    etatGeo("Cet appareil ne fournit pas de position. Utilisez plutôt le bouton Location, en saisissant son adresse.");
     chips(null);
     return;
   }
@@ -1543,7 +1717,7 @@ function parGPS(){
      n'a rien a voir avec le fait que le GPS reponde ou non */
   setTimeout(() => {
     if(!repondu)
-      echec("Aucune réponse du navigateur. Utilisez plutôt Ma location, en saisissant son adresse.");
+      echec("Aucune réponse du navigateur. Utilisez plutôt le bouton Location, en saisissant son adresse.");
   }, 12000);
   try{
     navigator.geolocation.getCurrentPosition(
@@ -1551,17 +1725,17 @@ function parGPS(){
       err => {
         repondu = true;
         const m = {
-          1:"Localisation refusée au cadre qui affiche cette page, même si vous l'avez autorisée pour le site. Utilisez plutôt Ma location, en saisissant son adresse.",
-          2:"Position indisponible pour le moment. Utilisez plutôt Ma location, en saisissant son adresse.",
-          3:"La recherche de position a pris trop de temps. Utilisez plutôt Ma location, en saisissant son adresse."
+          1:"Localisation refusée au cadre qui affiche cette page, même si vous l'avez autorisée pour le site. Utilisez plutôt le bouton Location, en saisissant son adresse.",
+          2:"Position indisponible pour le moment. Utilisez plutôt le bouton Location, en saisissant son adresse.",
+          3:"La recherche de position a pris trop de temps. Utilisez plutôt le bouton Location, en saisissant son adresse."
         };
-        echec(m[err.code] || "Position indisponible. Utilisez plutôt Ma location, en saisissant son adresse.");
+        echec(m[err.code] || "Position indisponible. Utilisez plutôt le bouton Location, en saisissant son adresse.");
       },
       {enableHighAccuracy:true, timeout:10000, maximumAge:60000}
     );
   }catch(e){
     repondu = true;
-    echec("La localisation est bloquée dans ce contexte. Utilisez plutôt Ma location, en saisissant son adresse.");
+    echec("La localisation est bloquée dans ce contexte. Utilisez plutôt le bouton Location, en saisissant son adresse.");
   }
 }
 
@@ -1829,7 +2003,11 @@ const fichesOuvertes = new Set();   /* noms des fiches depliees */
 /* Tout demarre replie : a l'ouverture on ne voit que les cinq en-tetes et leurs
    comptes, soit le carnet entier en un ecran. Derive de CATS pour ne pas oublier
    une categorie ajoutee plus tard. */
-const catsRepliees   = new Set(CATS.map(c => c.cle).concat("avalider"));
+const catsRepliees   = new Set(
+  CATS.map(c => c.cle)
+      .concat("avalider")
+      .concat(CATS.map(c => "avalider:" + c.cle))
+);
 
 function corpsFiche(l){
   let h = '<div class="fiche">';
@@ -1890,7 +2068,7 @@ function memoriserOuvertures(){
   liste.querySelectorAll(".rang > details").forEach(d => {
     if(d.open) fichesOuvertes.add(d.dataset.nom); else fichesOuvertes.delete(d.dataset.nom);
   });
-  liste.querySelectorAll(".groupe-bloc[data-cat]").forEach(d => {
+  liste.querySelectorAll(".groupe-bloc[data-cat], .sous-groupe[data-cat]").forEach(d => {
     if(d.open) catsRepliees.delete(d.dataset.cat); else catsRepliees.add(d.dataset.cat);
   });
 }
@@ -1942,7 +2120,18 @@ function rendu(){
       h += '<li class="groupe" style="--cat:#C08A2E"><details class="groupe-bloc" data-cat="avalider"'+(ouvert?" open":"")+">";
       h += '<summary class="groupe-tete"><i class="chevron"></i>'+icoClaude()+'Propositions de Claude'+
            '<span class="groupe-nb">'+aValider.length+"</span></summary>";
-      h += '<ul class="rangs">'+aValider.map(rangFiche).join("")+"</ul>";
+      /* redecoupees par categorie : a plat, quarante propositions formeraient
+         un mur de defilement, precisement ce que le sommaire evite */
+      CATS.forEach(c => {
+        const lot = aValider.filter(l => l.cat === c.cle);
+        if(!lot.length) return;
+        const cle = "avalider:" + c.cle;
+        h += '<details class="sous-groupe" data-cat="'+cle+'"'+(catsRepliees.has(cle)?"":" open")+">";
+        h += '<summary class="sous-tete"><i class="chevron"></i>'+c.emoji+" "+c.titre+
+             '<span class="groupe-nb">'+lot.length+"</span></summary>";
+        h += '<ul class="rangs">'+lot.map(rangFiche).join("")+"</ul>";
+        h += "</details>";
+      });
       h += "</details></li>";
     }
   }

@@ -1,7 +1,7 @@
 /* Service worker du carnet Beg Meil.
    Incremente VERSION a chaque deploiement : l'ancienne coquille est alors
    purgee et les appareils recuperent la nouvelle version au lancement suivant. */
-const VERSION = "v10";
+const VERSION = "v11";
 const COQUILLE = "carnet-" + VERSION;
 /* Volontairement hors du versionnement. Les tuiles ne sont pas du code, ce sont
    des donnees couteuses a reconstituer : les purger a chaque publication vidait
