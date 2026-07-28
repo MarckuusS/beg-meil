@@ -858,10 +858,13 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .leaflet-container a.leaflet-popup-close-button:hover,
   .leaflet-container a.leaflet-popup-close-button:focus{background:var(--fond);color:var(--encre)}
 
+  /* Sans nowrap, "Google Maps" se coupe en deux et le bouton devient deux fois
+     plus haut que son voisin. La bulle a de la marge sous le maxWidth de
+     Leaflet : elle s'elargit au lieu de casser le libelle. */
   .pop-btn{
     flex:1;text-align:center;text-decoration:none!important;font-size:13px;font-weight:600;
     border-radius:7px;padding:7px 6px;border:1px solid var(--encre);
-    color:var(--encre)!important;background:#fff;
+    color:var(--encre)!important;background:#fff;white-space:nowrap;
   }
   .pop-btn.gmaps{background:#4285F4;border-color:#1A62D6;color:#fff!important}
   .pop-btn.waze{background:#33CCFF;border-color:#0F9BC7;color:#06323F!important}
