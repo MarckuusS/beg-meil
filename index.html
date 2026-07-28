@@ -984,6 +984,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
     margin:3px auto 0;
   }
   footer{padding:22px 18px 8px;font-size:12px;color:var(--encre-2);line-height:1.6}
+  .maj{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .maj em{font-style:normal}
+  #etat-maj{color:var(--encre)}
 
   /* ---------- pastilles leaflet ---------- */
   .pin{
@@ -1093,9 +1096,15 @@ svg.leaflet-image-layer.leaflet-interactive path {
     Le groupe "Non approuvées" rassemble des adresses qui ne viennent pas du fichier. Elles ont été proposées puis recoupées sur le web : existence et adresse postale vérifiées, mais ni horaires, ni tarifs, ni téléphones, qui sont les informations les plus vite périmées. À valider avant de les intégrer au séjour.<br>
     Les points de la carte sont positionnés à l'adresse indiquée, à quelques dizaines de mètres près pour certains. Les boutons Google Maps et Waze, eux, utilisent l'adresse exacte.<br>
     Les distances et les temps sont calculés depuis ton point de départ, sur les serveurs de routage OpenStreetMap, OSRM puis Valhalla en secours. Ce point de départ est soit l'adresse de ta location, soit le GPS de l'appareil. L'adresse de la location reste dans la mémoire de ce navigateur : ce fichier publié ne contient ni cette adresse, ni ses coordonnées, ni aucun temps de trajet permettant de la situer.<br>
-    Les boutons Google Maps et Waze partent toujours de l'endroit où tu te trouves, quel que soit le sélecteur.<br>
+    Le bouton Google Maps ouvre la fiche du lieu : avis, photos et horaires annoncés. Le bouton Waze, lui, lance la navigation depuis l'endroit où tu te trouves.<br>
+    Le carnet se met à jour tout seul, à l'ouverture et à chaque retour sur l'application. Rien à effacer, rien à réinstaller.<br>
     Le bouton TripAdvisor n'apparait que sur les adresses qui ont une fiche vérifiée. Les plages, le Leclerc, la boulangerie et la chasse aux Kuriosités n'en ont pas.<br>
     Fond de carte et routage : OpenStreetMap.
+    <span class="maj">
+      Version <em id="num-version">?</em>.
+      <button class="lien-fond" id="chercher-maj" type="button">Chercher une mise à jour</button>
+      <em id="etat-maj" role="status"></em>
+    </span>
   </footer>
 </div>
 
@@ -1581,7 +1590,7 @@ function poserLocation(loc, persister){
   }).addTo(map).bindPopup(
     "<b>Ma location</b><br><span class=\"pop-adr\">" + esc(loc.adr) + "</span>" +
     '<div class="pop-actions">' +
-    '<a class="pop-btn gmaps" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=' +
+    '<a class="pop-btn gmaps" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=' +
       encodeURIComponent(loc.adr) + '">' + ico("pin") + 'Google Maps</a>' +
     '<a class="pop-btn waze" target="_blank" rel="noopener" href="https://www.waze.com/ul?q=' +
       encodeURIComponent(loc.adr) + '&navigate=yes">' + ico("fleche") + 'Waze</a></div>' +
@@ -1718,8 +1727,12 @@ function ico(n){
          'aria-hidden="true" focusable="false"><path d="' + ICONES[n] + '"/></svg>';
 }
 
+/* Fiche de l'etablissement, et non l'itineraire : lancer la navigation est le
+   role de Waze, juste a cote. On interroge avec le nom ET l'adresse, ce qui
+   tombe sur la bonne fiche meme quand plusieurs commerces partagent une rue. */
 function lienGoogle(l){
-  return "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(l.adr);
+  return "https://www.google.com/maps/search/?api=1&query=" +
+         encodeURIComponent(l.nom + ", " + l.adr);
 }
 function lienWaze(l){
   return "https://www.waze.com/ul?q=" + encodeURIComponent(l.adr) + "&navigate=yes";
@@ -2088,11 +2101,71 @@ setInterval(rendreMarees, 60000);
 rendu();
 
 /* Mise en cache pour l'usage hors reseau. Sans effet si la page est ouverte
-   en file:// ou dans un cadre imbrique, l'application marche alors normalement. */
+   en file:// ou dans un cadre imbrique, l'application marche alors normalement.
+
+   MISE A JOUR AUTOMATIQUE. Auparavant il fallait vider le cache du navigateur a
+   la main pour voir une nouvelle version : hors de portee de la plupart des
+   gens. Desormais la page verifie a chaque ouverture et a chaque retour au
+   premier plan. Le nouveau service worker s'active des son installation
+   (skipWaiting), la page detecte le changement de controleur et se recharge une
+   seule fois, sur du contenu deja mis en cache par l'installation. */
+let etatMajTimer = null;
+function direMaj(txt){
+  const e = document.getElementById("etat-maj");
+  if(!e) return;
+  e.textContent = txt || "";
+  clearTimeout(etatMajTimer);
+  if(txt) etatMajTimer = setTimeout(() => { e.textContent = ""; }, 8000);
+}
+
 if("serviceWorker" in navigator){
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+  /* A la toute premiere visite il n'y a pas encore de controleur : le prendre
+     n'est pas une mise a jour, il ne faut surtout pas recharger. */
+  const avaitControleur = !!navigator.serviceWorker.controller;
+  let rechargeFaite = false;
+
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if(!avaitControleur || rechargeFaite) return;
+    rechargeFaite = true;
+    location.reload();
   });
+
+  navigator.serviceWorker.addEventListener("message", e => {
+    if(e.data && e.data.version){
+      const v = document.getElementById("num-version");
+      if(v) v.textContent = e.data.version;
+    }
+  });
+
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").then(reg => {
+      reg.update();
+      /* revenir sur l'application est le bon moment pour verifier : c'est ce
+         que font les parents entre deux sorties */
+      document.addEventListener("visibilitychange", () => {
+        if(!document.hidden) reg.update();
+      });
+      const b = document.getElementById("chercher-maj");
+      if(b) b.addEventListener("click", () => {
+        direMaj("Vérification...");
+        reg.update()
+          .then(() => direMaj("Carnet à jour. Une nouvelle version se serait installée toute seule."))
+          .catch(() => direMaj("Pas de réseau pour vérifier."));
+      });
+      /* au tout premier chargement il n'y a pas encore de controleur : on
+         attend que le worker soit pret avant de lui demander sa version */
+      navigator.serviceWorker.ready.then(pret => {
+        const cible = navigator.serviceWorker.controller || pret.active;
+        if(cible) cible.postMessage("version");
+      }).catch(() => {});
+    }).catch(() => {
+      const b = document.getElementById("chercher-maj");
+      if(b) b.hidden = true;
+    });
+  });
+} else {
+  const b = document.getElementById("chercher-maj");
+  if(b) b.hidden = true;
 }
 
 document.getElementById("loc-chercher").addEventListener("click", chercherAdresse);

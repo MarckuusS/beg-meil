@@ -1,7 +1,7 @@
 /* Service worker du carnet Beg Meil.
    Incremente VERSION a chaque deploiement : l'ancienne coquille est alors
    purgee et les appareils recuperent la nouvelle version au lancement suivant. */
-const VERSION = "v5";
+const VERSION = "v7";
 const COQUILLE = "carnet-" + VERSION;
 /* Volontairement hors du versionnement. Les tuiles ne sont pas du code, ce sont
    des donnees couteuses a reconstituer : les purger a chaque publication vidait
@@ -38,6 +38,12 @@ self.addEventListener("activate", e => {
       ))
       .then(() => self.clients.claim())
   );
+});
+
+/* La page demande sa version pour l'afficher : ainsi le numero ne peut pas
+   diverger entre le service worker et l'application, il n'existe qu'ici. */
+self.addEventListener("message", e => {
+  if(e.data === "version" && e.source) e.source.postMessage({version: VERSION});
 });
 
 /* Limite la taille du cache de tuiles, sinon il grossit sans fin. */
