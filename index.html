@@ -1826,9 +1826,10 @@ const CATS = [
   {cle:"sortie",   titre:"Sorties",   emoji:"🎟️"}
 ];
 const fichesOuvertes = new Set();   /* noms des fiches depliees */
-/* Le groupe des propositions demarre replie : le carnet valide reste en tete,
-   et les adresses non approuvees ne se melangent pas aux autres. */
-const catsRepliees   = new Set(["avalider"]);
+/* Tout demarre replie : a l'ouverture on ne voit que les cinq en-tetes et leurs
+   comptes, soit le carnet entier en un ecran. Derive de CATS pour ne pas oublier
+   une categorie ajoutee plus tard. */
+const catsRepliees   = new Set(CATS.map(c => c.cle).concat("avalider"));
 
 function corpsFiche(l){
   let h = '<div class="fiche">';
