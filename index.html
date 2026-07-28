@@ -811,9 +811,18 @@ svg.leaflet-image-layer.leaflet-interactive path {
     display:inline-flex;align-items:center;justify-content:center;min-height:44px;
   }
   .chip[aria-pressed="true"]{background:var(--encre);color:#fff;border-color:var(--encre)}
-  .outils{display:flex;gap:8px;margin-top:8px}
+  /* Sur 390 px, les trois controles tiennent techniquement sur une ligne, mais
+     la recherche tombe alors a 125 px : trop etroit des lors qu'elle devient
+     l'outil principal pour 55 adresses. Elle prend donc sa propre ligne, le tri
+     et le compteur se partageant la suivante. */
+  .outils{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .tri{flex:1 1 auto;min-width:0}
+  .chip-faits{flex:0 0 auto;font-family:var(--mono);font-size:13px;letter-spacing:.04em}
+  .rang.fait .rang-nom{color:var(--encre-2)}
+  .fait-marque{flex:none;color:var(--plage);font-weight:700}
+  .btn-fait.actif{background:var(--encre);color:#fff;border-color:var(--encre)}
   .outils input{
-    flex:1;min-width:0;border:1px solid var(--trait);border-radius:10px;background:var(--carte);
+    flex:1 1 100%;min-width:0;min-height:44px;border:1px solid var(--trait);border-radius:10px;background:var(--carte);
     /* 16px minimum : en dessous, Safari iOS zoome la page a chaque prise de focus */
     padding:9px 12px;font-size:16px;font-family:inherit;color:var(--encre);
   }
@@ -987,6 +996,11 @@ svg.leaflet-image-layer.leaflet-interactive path {
     border:1px solid var(--trait);cursor:pointer;color:inherit;
   }
   .coefcell u{display:block;text-decoration:none;font-size:11px;color:var(--encre-2);line-height:1.4}
+  .jour-peche{
+    margin:0 0 10px;padding:8px 10px;background:rgba(15,122,107,.10);
+    border:1px solid rgba(15,122,107,.35);border-radius:8px;
+    font-size:13px;color:var(--encre);line-height:1.45;
+  }
   .coefcell b{display:block;font-size:12px;font-weight:600;line-height:1.35;min-height:33px}
   .coefcell[aria-pressed="true"]{
     border-color:var(--encre);box-shadow:0 0 0 2px var(--encre);font-weight:700;
@@ -1092,6 +1106,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
         <option value="fichier">Ordre du carnet</option>
         <option value="proche">Le plus proche de moi</option>
       </select>
+      <button class="chip chip-faits" id="bascule-faits" type="button" aria-pressed="false"
+              aria-label="Masquer les adresses déjà faites">✓ <span id="nb-faits">0</span></button>
     </div>
   </div>
 
@@ -1468,6 +1484,33 @@ const LIEUX = [
    lat:47.79558, lng:-3.77577}
 ];
 
+/* ---------- Vent et maree, par plage ----------
+   En Bretagne c'est le vent qui decide de la plage, pas le soleil, et la maree
+   decide de l'heure. Etabli en recoupant deux avis independants : ils
+   s'accordent sur l'orientation et l'abri des 13 plages, et sur 11 des 13 pour
+   la sensibilite a la maree. Sur les deux desaccords, "tres_sensible" n'est
+   retenu que si les deux le disent, pour ne pas alarmer a tort.
+   Table separee, pour ne pas alourdir les entrees de LIEUX. */
+const PLAGES_INFO = {
+  "Plage de Bot Conan":              {vent:"Abritée des vents d'ouest, de sud-ouest et de nord-ouest", maree:"tres_sensible"},
+  "Plage de Kerveltrec":             {vent:"Abritée des vents d'ouest, de sud-ouest et de nord-ouest", maree:"tres_sensible"},
+  "Plage des Dunes":                 {vent:"Abritée des vents de nord et de nord-est, exposée plein sud", maree:"sensible"},
+  "Plage du Cap-Coz":                {vent:"Abritée des vents d'ouest, de nord-ouest et de nord", maree:"tres_sensible"},
+  "Plage de Kerambigorn":            {vent:"Abritée des vents de nord et de nord-est, exposée plein sud", maree:"sensible"},
+  "Plage de Cleut Rouz":             {vent:"Abritée des vents de nord et de nord-est, exposée plein sud", maree:"sensible"},
+  "Plage de Kerler":                 {vent:"Abritée des vents de nord et de nord-est", maree:"tres_sensible"},
+  "Plage de la Pointe de Mousterlin":{vent:"Très peu abritée, mais on peut changer de côté de la pointe selon le vent", maree:"tres_sensible"},
+  "Plage de Kerleven":               {vent:"La plus abritée du carnet : protégée des vents de nord, nord-est, nord-ouest, est et ouest", maree:"tres_sensible"},
+  "Plage du Trez":                   {vent:"Abritée des vents de nord, de nord-est et d'est", maree:"sensible"},
+  "Plage des Sables Blancs":         {vent:"Abritée des vents d'est, de nord-est et de sud-est par la ville", maree:"sensible"},
+  "Plage du Treustel":               {vent:"Abritée des vents de nord et de nord-ouest", maree:"sensible"},
+  "Plage de Langoz":                 {vent:"Abritée des vents de nord, de nord-ouest et d'ouest", maree:"tres_sensible"}
+};
+LIEUX.forEach(l => {
+  const i = PLAGES_INFO[l.nom];
+  if(i){ l.vent = i.vent; l.maree = i.maree; }
+});
+
 /* ----- carte ----- */
 const map = L.map("map", {scrollWheelZoom:false}).setView([47.878, -3.998], 13);
 
@@ -1637,7 +1680,16 @@ function poser(cle, mode, res){
   return poses;
 }
 
-function essayer(cle, mode, rang){
+/* Jeton de generation, incremente a chaque changement de point de depart.
+   Sans lui : on demande les trajets depuis A, on change pour B avant la reponse,
+   et la reponse de A revient ecraser les temps calcules depuis B. Les distances
+   affichees sont alors fausses, sans le moindre signe visible, et le tri par
+   proximite ment. Le depart est aussi passe en parametre : relire la globale au
+   moment d'un repli de routeur pouvait melanger deux origines dans une meme serie. */
+let jetonOrigine = 0;
+
+function essayer(cle, mode, rang, depart, jeton){
+  if(jeton !== jetonOrigine) return;
   const liste = ROUTEURS[mode];
   if(rang >= liste.length){
     if(mode === "pied") manquePied = true;
@@ -1647,12 +1699,16 @@ function essayer(cle, mode, rang){
     majTrajets();
     return;
   }
-  liste[rang](maPosition)
+  liste[rang](depart)
     .then(res => {
+      if(jeton !== jetonOrigine) return;
       if(res && poser(cle, mode, res) > 0){ majTrajets(); }
-      else { essayer(cle, mode, rang + 1); }
+      else { essayer(cle, mode, rang + 1, depart, jeton); }
     })
-    .catch(() => essayer(cle, mode, rang + 1));
+    .catch(() => {
+      if(jeton !== jetonOrigine) return;
+      essayer(cle, mode, rang + 1, depart, jeton);
+    });
 }
 
 let manquePied = false;
@@ -1661,8 +1717,13 @@ function chargerRoutage(cle){
   if(demande[cle]) return;
   demande[cle] = true;
   if(navigator.onLine === false){ demande[cle] = false; manquePied = true; majTrajets(); return; }
-  essayer(cle, "auto", 0);
-  essayer(cle, "pied", 0);
+  if(!maPosition){ demande[cle] = false; return; }
+  /* on fige le depart et la generation ici : la suite de la chaine ne relit
+     plus aucune globale, elle travaille sur ce qu'on lui a passe */
+  const depart = {lat: maPosition.lat, lng: maPosition.lng};
+  const jeton = jetonOrigine;
+  essayer(cle, "auto", 0, depart, jeton);
+  essayer(cle, "pied", 0, depart, jeton);
 }
 
 function etatGeo(txt){
@@ -1679,6 +1740,7 @@ function chips(actif){
 function poserPosition(lat, lng, libelle){
   maPosition = {lat: lat, lng: lng};
   sourcePosition = "gps";
+  jetonOrigine++;
   origine = "moi";
   if(marqueurMoi) map.removeLayer(marqueurMoi);
   marqueurMoi = L.marker([lat, lng], {
@@ -1843,7 +1905,7 @@ function oublierLocation(){
   if(chip) chip.setAttribute("aria-pressed","false");
   /* les trajets affiches partaient de la location : ils n'ont plus de sens */
   if(sourcePosition === "location"){
-    maPosition = null; sourcePosition = null; origine = "maison";
+    maPosition = null; sourcePosition = null; jetonOrigine++; origine = "maison";
     LIEUX.forEach(l => { if(l.rt) delete l.rt.moi; });
     demande.moi = false; manquePied = false;
     majTrajets();
@@ -1875,6 +1937,7 @@ function choisirOrigine(o){
     if(marqueurMoi){ map.removeLayer(marqueurMoi); marqueurMoi = null; }
     maPosition = {lat: maLocation.lat, lng: maLocation.lng};
     sourcePosition = "location";
+    jetonOrigine++;
     origine = "moi";
     LIEUX.forEach(l => { if(l.rt) delete l.rt.moi; });
     demande.moi = false; manquePied = false;
@@ -1990,9 +2053,48 @@ function eloignement(l){
   return m == null ? Infinity : m;
 }
 
-/* Le carnet tient en 4 categories et 15 adresses : on affiche le sommaire, et
-   le detail ne se deplie qu'a la demande. Les 4 boutons pesaient 99 px sur une
-   fiche de 305, pour des actions qui ne servent qu'une fois l'adresse choisie. */
+/* ---------- Deja fait ----------
+   55 adresses et deux ou trois semaines sur place : sans marqueur on perd vite
+   le fil de ce qu'on a essaye. Range dans le navigateur, comme la location :
+   rien n'est envoye, rien n'est ecrit dans le fichier publie. */
+const CLE_FAITS = "carnet-beg-meil-faits";
+
+function lireFaits(){
+  try{
+    const v = JSON.parse(localStorage.getItem(CLE_FAITS) || "[]");
+    return new Set(Array.isArray(v) ? v : []);
+  }catch(e){ return new Set(); }
+}
+const faits = lireFaits();
+let masquerFaits = false;
+
+function ecrireFaits(){
+  try{ localStorage.setItem(CLE_FAITS, JSON.stringify([...faits])); return true; }
+  catch(e){ return false; }
+}
+
+function majBoutonFaits(){
+  const b = document.getElementById("bascule-faits");
+  const n = document.getElementById("nb-faits");
+  if(n) n.textContent = faits.size;
+  if(b){
+    b.setAttribute("aria-pressed", masquerFaits ? "true" : "false");
+    b.setAttribute("aria-label", masquerFaits
+      ? "Afficher de nouveau les adresses déjà faites"
+      : "Masquer les " + faits.size + " adresses déjà faites");
+  }
+}
+
+function basculerFait(nom){
+  if(faits.has(nom)) faits.delete(nom); else faits.add(nom);
+  ecrireFaits();
+  majBoutonFaits();
+  rendu();
+}
+
+/* Le carnet tient en 4 categories : on affiche le sommaire, et le detail ne se
+   deplie qu'a la demande. Les 4 boutons pesaient 99 px sur une fiche de 305,
+   pour des actions qui ne servent qu'une fois l'adresse choisie. */
 const CATS = [
   {cle:"resto",    titre:"Restos",    emoji:"🍽️"},
   {cle:"commerce", titre:"Commerces", emoji:"🛒"},
@@ -2009,12 +2111,43 @@ const catsRepliees   = new Set(
       .concat(CATS.map(c => "avalider:" + c.cle))
 );
 
+/* ---------- Marées et plages ----------
+   Les deux sections vivaient côte à côte sans se parler. Or la marée décide de
+   l'heure à laquelle une plage est praticable, et sept d'entre elles changent
+   du tout au tout entre haute et basse mer. */
+function mareeDuJour(){
+  const auj = new Intl.DateTimeFormat("fr-CA", {timeZone:"Europe/Paris"}).format(new Date());
+  if(!auj.startsWith(MOIS)) return null;
+  return JOURS.find(d => d.j === +auj.slice(-2)) || null;
+}
+
+function ligneMaree(){
+  const d = mareeDuJour();
+  if(!d) return "";
+  const heures = t => d.ev.filter(e => e.type === t).map(e => e.heure).join(" et ");
+  const coefs = d.ev.filter(e => e.coef).map(e => e.coef);
+  const bm = heures("BM"), pm = heures("PM");
+  if(!bm && !pm) return "";
+  return "Aujourd'hui, basse mer à " + bm + ", pleine mer à " + pm +
+         (coefs.length ? ", coefficient " + Math.max.apply(null, coefs) : "");
+}
+
 function corpsFiche(l){
   let h = '<div class="fiche">';
   if(l.avalider) h += '<p class="avis-neuf">Proposition de Claude, pas encore approuvée. Elle ne vient pas du fichier du séjour. Son existence et son adresse postale ont été recoupées sur le web, mais ni les horaires, ni les tarifs, ni le téléphone : à vérifier avant de se déplacer.</p>';
   h += '<p class="ligne"><span class="k">📍</span><span class="v">'+l.adr+"</span></p>";
   if(l.horaires) h += '<p class="ligne"><span class="k">🕑</span><span class="v">'+l.horaires+"</span></p>";
   if(l.note) h += '<p class="ligne"><span class="k">💬</span><span class="v">'+l.note+"</span></p>";
+  if(l.cat === "plage"){
+    if(l.vent) h += '<p class="ligne"><span class="k">🧭</span><span class="v">'+l.vent+"</span></p>";
+    const lm = ligneMaree();
+    const bouge = l.maree === "tres_sensible"
+      ? "Cette plage change beaucoup entre haute et basse mer : regarde l'heure avant d'y aller."
+      : "";
+    if(lm || bouge)
+      h += '<p class="ligne"><span class="k">🌊</span><span class="v">'+
+           [lm, bouge].filter(Boolean).join(" ")+"</span></p>";
+  }
   if(l.tel){
     const brut = "+33"+l.tel.replace(/-/g,"").slice(1);
     h += '<p class="ligne"><span class="k">📞</span><span class="v"><a href="tel:'+brut+'">'+l.tel+"</a></span></p>";
@@ -2032,7 +2165,10 @@ function corpsFiche(l){
   h += '<div class="actions">';
   h += '<a class="btn gmaps" href="'+lienGoogle(l)+'" target="_blank" rel="noopener">'+ico("pin")+'Google Maps</a>';
   h += '<a class="btn waze" href="'+lienWaze(l)+'" target="_blank" rel="noopener">'+ico("fleche")+'Waze</a>';
-  h += "</div></div>";
+  h += "</div>";
+  h += '<div class="actions"><button type="button" class="btn btn-fait'+(faits.has(l.nom)?" actif":"")+'">'+
+       (faits.has(l.nom) ? "✓ Déjà fait" : "Marquer comme fait")+"</button></div>";
+  h += "</div>";
   return h;
 }
 
@@ -2048,11 +2184,13 @@ function trajetCourt(l){
 
 function rangFiche(l){
   const court = trajetCourt(l);
-  let h = '<li class="rang" style="--cat:'+COUL[l.cat]+'">';
+  const fait = faits.has(l.nom);
+  let h = '<li class="rang'+(fait?" fait":"")+'" style="--cat:'+COUL[l.cat]+'">';
   h += '<details data-nom="'+l.nom.replace(/"/g,"&quot;")+'"'+(fichesOuvertes.has(l.nom)?" open":"")+">";
   h += '<summary class="rang-tete">';
   h += '<span class="rang-titre"><span class="rang-nom">'+l.nom+"</span>";
   h += '<span class="rang-style">'+l.style+"</span></span>";
+  if(fait) h += '<span class="fait-marque" title="Déjà fait">✓</span>';
   if(l.avalider) h += '<span class="neuf">à valider</span>';
   if(court) h += '<span class="rang-trajet">'+court+"</span>";
   h += "</summary>";
@@ -2077,6 +2215,7 @@ function rendu(){
   memoriserOuvertures();
   const filtres = LIEUX.filter(l => {
     if(catActive !== "tout" && l.cat !== catActive) return false;
+    if(masquerFaits && faits.has(l.nom)) return false;
     if(!recherche) return true;
     const t = sansAccent([l.nom, l.style, l.adr, l.horaires, l.note].join(" "));
     return t.includes(recherche);
@@ -2145,6 +2284,8 @@ function rendu(){
       l.marker.openPopup();
       document.getElementById("map").scrollIntoView({behavior: DOUX ? "smooth" : "auto", block:"center"});
     });
+    const bf = d.querySelector(".btn-fait");
+    if(bf) bf.addEventListener("click", () => basculerFait(l.nom));
   });
 }
 
@@ -2172,6 +2313,12 @@ document.getElementById("tri").addEventListener("change", e => {
   tri = e.target.value;
   rendu();
 });
+document.getElementById("bascule-faits").addEventListener("click", () => {
+  masquerFaits = !masquerFaits;
+  majBoutonFaits();
+  rendu();
+});
+majBoutonFaits();
 
 /* ----- marees : aout 2026, port de Concarneau (predictions SHOM) ----- */
 const MAREES_AOUT = [
@@ -2208,6 +2355,7 @@ const MAREES_AOUT = [
   "31|lundi 31|21h00|B 01h15 0,89;H 07h10 4,92 93;B 13h29 0,97;H 19h29 5,08 91"
 ];
 
+
 /* format : jour|nom|coucher du soleil|type heure hauteur [coef];... */
 const JOURS = MAREES_AOUT.map(l => {
   const p = l.split("|");
@@ -2237,10 +2385,18 @@ function ecart(ms){
 let jourVu = 13;
 
 function rendreDetail(){
-  const d = JOURS.find(x => x.j === jourVu);
+  const d = JOURS.find(x => x.j === jourVu) || JOURS[0];
+  if(!d) return;
   const box = document.getElementById("detail");
   let h = '<div class="jour"><p class="jour-date">' + d.nom + ' août 2026</p>';
-  h += '<p class="jour-sous">Coucher du soleil ' + d.coucher + '</p><div class="evts">';
+  h += '<p class="jour-sous">Coucher du soleil ' + d.coucher + '</p>';
+  /* au dela de 95 la mer se retire tres loin : c'est ce que cherchent les
+     pecheurs a pied, et rien ne le signalait jusqu'ici */
+  const coefMax = Math.max.apply(null, d.ev.filter(e => e.coef).map(e => e.coef).concat([0]));
+  if(coefMax >= 95)
+    h += '<p class="jour-peche">🦀 Grande marée, coefficient ' + coefMax +
+         '. Une des meilleures journées pour la pêche à pied.</p>';
+  h += '<div class="evts">';
   d.ev.forEach(e => {
     h += '<div class="evt ' + e.type.toLowerCase() + '">';
     h += '<span class="lbl">' + (e.type === "PM" ? "Pleine mer" : "Basse mer") + '</span>';
