@@ -975,20 +975,19 @@ svg.leaflet-image-layer.leaflet-interactive path {
   </div>
   <div class="origines" id="origines">
     <span class="origines-titre">Trajets depuis</span>
-    <button class="chip chip-origine" data-origine="location" aria-pressed="false" hidden>🏠 Ma location</button>
+    <button class="chip chip-origine" data-origine="location" aria-pressed="false">🏠 Ma location</button>
     <button class="chip chip-origine" data-origine="moi" aria-pressed="false">📍 Ma position GPS</button>
-    <button class="chip chip-origine" data-origine="carte" aria-pressed="false">🗺️ Point de départ sur la carte</button>
   </div>
   <p class="geo-etat" id="geo-etat"></p>
   <details class="reglages" id="reglages">
     <summary>🏠 Ma location</summary>
-    <p class="reglages-note">Saisie une fois, gardée sur cet appareil uniquement. Elle n'est ni envoyée ni écrite dans le fichier publié.</p>
+    <p class="reglages-note">Saisie une fois, gardée sur cet appareil uniquement. Elle n'est ni envoyée ni écrite dans le fichier publié. Les trajets voiture et à pied partent ensuite de cette adresse.</p>
     <div class="reglages-saisie">
       <input id="loc-adr" type="text" autocomplete="off" placeholder="Adresse de la location">
       <button class="btn" id="loc-chercher">Chercher</button>
     </div>
     <div class="reglages-saisie">
-      <button class="btn" id="loc-carte">Utiliser le point posé sur la carte</button>
+      <button class="btn" id="loc-carte">🗺️ Pointer sur la carte</button>
       <button class="btn" id="loc-oublier">Oublier</button>
     </div>
     <p class="reglages-etat" id="loc-etat"></p>
@@ -1033,7 +1032,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <footer>
     Données : fichier BEG_MEIL_2026.xlsx. Les horaires et tarifs sont ceux notés dans le fichier, à vérifier sur place en pleine saison.<br>
     Les points de la carte sont positionnés à l'adresse indiquée, à quelques dizaines de mètres près pour certains. Les boutons Google Maps et Waze, eux, utilisent l'adresse exacte.<br>
-    Les distances et les temps sont calculés depuis ton point de départ, sur les serveurs de routage OpenStreetMap, OSRM puis Valhalla en secours. Le point de départ vient du GPS ou d'un simple appui sur la carte, il n'est jamais enregistré dans le fichier. Ce fichier ne contient ni l'adresse, ni les coordonnées, ni aucun temps de trajet permettant de situer la location.<br>
+    Les distances et les temps sont calculés depuis ton point de départ, sur les serveurs de routage OpenStreetMap, OSRM puis Valhalla en secours. Ce point de départ est soit l'adresse de ta location, soit le GPS de l'appareil. L'adresse de la location reste dans la mémoire de ce navigateur : ce fichier publié ne contient ni cette adresse, ni ses coordonnées, ni aucun temps de trajet permettant de la situer.<br>
     Les boutons Google Maps et Waze partent toujours de l'endroit où tu te trouves, quel que soit le sélecteur.<br>
     Le bouton TripAdvisor n'apparait que sur les adresses qui ont une fiche vérifiée. Les plages, le Leclerc, la boulangerie et la chasse aux Kuriosités n'en ont pas.<br>
     Fond de carte et routage : OpenStreetMap.
@@ -1217,7 +1216,11 @@ setTimeout(() => map.invalidateSize(), 400);
    Une requete matricielle par mode et par origine, resultat garde en memoire.
    Sans reseau, on retombe sur les temps notes dans le fichier Excel. */
 let origine = "maison";      /* "maison" ou "moi" */
-let maPosition = null;       /* {lat, lng} une fois la geolocalisation acceptee */
+let maPosition = null;       /* {lat, lng} du point de depart courant */
+/* D'ou vient maPosition : "gps" ou "location". Sans cette distinction, revenir
+   sur Ma position GPS apres avoir choisi Ma location reutiliserait en silence
+   les coordonnees de la location en les faisant passer pour du GPS. */
+let sourcePosition = null;
 let marqueurMoi = null;
 const demande = {};          /* evite de relancer deux fois la meme requete */
 
@@ -1241,6 +1244,19 @@ function trajets(l){
   if(r.kmPied) out.push(PIED_ICONE + " " + r.kmPied + " / " + r.mnPied);
   else if(manquePied) out.push(PIED_ICONE + " indisponible");
   return out;
+}
+
+/* Rafraichit tout ce qui affiche un temps de trajet : les fiches de la liste et
+   la bulle eventuellement ouverte. Appelee des qu'un routeur repond.
+   Sans elle, les appels du .then() de essayer() levaient une ReferenceError que
+   le .catch() prenait pour un echec du routeur : les temps etaient telecharges
+   puis jamais affiches, et le mode pieton se declarait indisponible a tort. */
+function majTrajets(){
+  rendu();
+  LIEUX.forEach(l => {
+    const p = l.marker && l.marker.getPopup();
+    if(p) p.setContent(contenuBulle(l));
+  });
 }
 
 /* Deux fournisseurs par mode. Si le premier ne repond pas ou renvoie du vide,
@@ -1342,10 +1358,11 @@ function chips(actif){
     c.setAttribute("aria-pressed", c.dataset.origine === actif));
 }
 
-/* Point de depart, quelle que soit sa provenance : GPS ou clic sur la carte.
-   Rien n'est enregistre, tout disparait a la fermeture de la page. */
+/* Position GPS de l'appareil. Rien n'est enregistre, tout disparait a la
+   fermeture de la page. La location, elle, passe par poserLocation(). */
 function poserPosition(lat, lng, libelle){
   maPosition = {lat: lat, lng: lng};
+  sourcePosition = "gps";
   origine = "moi";
   if(marqueurMoi) map.removeLayer(marqueurMoi);
   marqueurMoi = L.marker([lat, lng], {
@@ -1355,42 +1372,33 @@ function poserPosition(lat, lng, libelle){
   }).addTo(map).bindPopup(libelle + "<br>Faites glisser pour ajuster");
   marqueurMoi.on("dragend", e => {
     const p = e.target.getLatLng();
-    poserPosition(p.lat, p.lng, "Mon point de départ");
+    poserPosition(p.lat, p.lng, "Ma position");
   });
   /* un nouveau depart invalide les trajets deja calcules */
   LIEUX.forEach(l => { if(l.rt) delete l.rt.moi; });
   demande.moi = false;
   manquePied = false;
-  etatGeo("Point de départ posé, calcul des trajets...");
+  etatGeo("Position posée, calcul des trajets...");
   chargerRoutage("moi");
   majTrajets();
   setTimeout(() => etatGeo(""), 4000);
 }
 
-function pointerSurCarte(){
-  chips("carte");
-  etatGeo("Touchez la carte à l'endroit de votre point de départ.");
-  map.getContainer().style.cursor = "crosshair";
-  map.once("click", e => {
-    map.getContainer().style.cursor = "";
-    poserPosition(e.latlng.lat, e.latlng.lng, "Mon point de départ");
-    chips("carte");
-  });
-}
-
 function parGPS(){
   chips("moi");
   if(!navigator.geolocation){
-    etatGeo("Cet appareil ne fournit pas de position. Utilisez le point de départ sur la carte.");
+    etatGeo("Cet appareil ne fournit pas de position. Utilisez plutôt Ma location, en saisissant son adresse.");
     chips(null);
     return;
   }
   etatGeo("Recherche de la position...");
   let repondu = false;
   const echec = txt => { etatGeo(txt); chips(null); };
+  /* on teste repondu seul : maPosition peut deja contenir la location, ce qui
+     n'a rien a voir avec le fait que le GPS reponde ou non */
   setTimeout(() => {
-    if(!repondu && !maPosition)
-      echec("Aucune réponse du navigateur. Utilisez le point de départ sur la carte.");
+    if(!repondu)
+      echec("Aucune réponse du navigateur. Utilisez plutôt Ma location, en saisissant son adresse.");
   }, 12000);
   try{
     navigator.geolocation.getCurrentPosition(
@@ -1398,17 +1406,17 @@ function parGPS(){
       err => {
         repondu = true;
         const m = {
-          1:"Localisation refusée au cadre qui affiche cette page, même si vous l'avez autorisée pour le site. Utilisez le point de départ sur la carte.",
-          2:"Position indisponible pour le moment. Utilisez le point de départ sur la carte.",
-          3:"La recherche de position a pris trop de temps. Utilisez le point de départ sur la carte."
+          1:"Localisation refusée au cadre qui affiche cette page, même si vous l'avez autorisée pour le site. Utilisez plutôt Ma location, en saisissant son adresse.",
+          2:"Position indisponible pour le moment. Utilisez plutôt Ma location, en saisissant son adresse.",
+          3:"La recherche de position a pris trop de temps. Utilisez plutôt Ma location, en saisissant son adresse."
         };
-        echec(m[err.code] || "Position indisponible. Utilisez le point de départ sur la carte.");
+        echec(m[err.code] || "Position indisponible. Utilisez plutôt Ma location, en saisissant son adresse.");
       },
       {enableHighAccuracy:true, timeout:10000, maximumAge:60000}
     );
   }catch(e){
     repondu = true;
-    echec("La localisation est bloquée dans ce contexte. Utilisez le point de départ sur la carte.");
+    echec("La localisation est bloquée dans ce contexte. Utilisez plutôt Ma location, en saisissant son adresse.");
   }
 }
 
@@ -1445,8 +1453,6 @@ function poserLocation(loc, persister){
       encodeURIComponent(loc.adr) + '&navigate=yes">' + ico("fleche") + 'Waze</a></div>' +
     '<button type="button" class="pop-fermer" onclick="fermerBulle()">Fermer</button>'
   );
-  const chip = document.querySelector('.chip-origine[data-origine="location"]');
-  if(chip) chip.hidden = false;
   document.getElementById("loc-adr").value = loc.adr;
 }
 
@@ -1469,14 +1475,19 @@ function chercherAdresse(){
     .catch(() => locEtat("Le service d'adresses ne répond pas. Pose le point sur la carte."));
 }
 
+/* Repli quand l'adresse ne se trouve pas, ou quand on prefere viser la maison
+   a l'oeil. Ne demande aucune permission, contrairement au GPS. */
 function locDepuisCarte(){
-  if(!maPosition){
-    locEtat("Pose d'abord un point de départ sur la carte, puis reviens ici.");
-    return;
-  }
   const q = document.getElementById("loc-adr").value.trim();
-  poserLocation({adr: q || "Ma location", lat: maPosition.lat, lng: maPosition.lng}, true);
-  locEtat("Location enregistrée sur cet appareil.");
+  locEtat("Touchez la carte à l'emplacement de la location.");
+  map.getContainer().style.cursor = "crosshair";
+  document.getElementById("map").scrollIntoView({behavior:"smooth", block:"center"});
+  map.once("click", e => {
+    map.getContainer().style.cursor = "";
+    poserLocation({adr: q || "Ma location", lat: e.latlng.lat, lng: e.latlng.lng}, true);
+    locEtat("Location enregistrée sur cet appareil.");
+    choisirOrigine("location");
+  });
 }
 
 function oublierLocation(){
@@ -1484,17 +1495,41 @@ function oublierLocation(){
   maLocation = null;
   if(marqueurLocation){ map.removeLayer(marqueurLocation); marqueurLocation = null; }
   const chip = document.querySelector('.chip-origine[data-origine="location"]');
-  if(chip){ chip.hidden = true; chip.setAttribute("aria-pressed","false"); }
+  if(chip) chip.setAttribute("aria-pressed","false");
+  /* les trajets affiches partaient de la location : ils n'ont plus de sens */
+  if(sourcePosition === "location"){
+    maPosition = null; sourcePosition = null; origine = "maison";
+    LIEUX.forEach(l => { if(l.rt) delete l.rt.moi; });
+    demande.moi = false; manquePied = false;
+    majTrajets();
+  }
   document.getElementById("loc-adr").value = "";
   locEtat("Location effacée de cet appareil.");
 }
 
+/* Ouvre le panneau et amene le doigt sur la saisie : sans location enregistree,
+   le bouton n'aurait rien a calculer et resterait muet. */
+function demanderLocation(){
+  const d = document.getElementById("reglages");
+  d.open = true;
+  locEtat("Saisis l'adresse de la location, ou pointe la sur la carte.");
+  d.scrollIntoView({behavior:"smooth", block:"center"});
+  document.getElementById("loc-adr").focus();
+}
+
 function choisirOrigine(o){
   if(o === "location"){
-    if(!maLocation) return;
+    if(!maLocation){ demanderLocation(); return; }
+    /* deja cale sur cette location : reafficher suffit, inutile de tout relancer.
+       On compare les coordonnees, car l'adresse a pu changer entre temps. */
+    if(sourcePosition === "location" && maPosition &&
+       maPosition.lat === maLocation.lat && maPosition.lng === maLocation.lng){
+      chips("location"); etatGeo(""); majTrajets(); return;
+    }
     chips("location");
     if(marqueurMoi){ map.removeLayer(marqueurMoi); marqueurMoi = null; }
     maPosition = {lat: maLocation.lat, lng: maLocation.lng};
+    sourcePosition = "location";
     origine = "moi";
     LIEUX.forEach(l => { if(l.rt) delete l.rt.moi; });
     demande.moi = false; manquePied = false;
@@ -1504,8 +1539,10 @@ function choisirOrigine(o){
     setTimeout(() => etatGeo(""), 4000);
     return;
   }
-  if(o === "carte"){ pointerSurCarte(); return; }
-  if(maPosition){ chips("moi"); origine = "moi"; etatGeo(""); majTrajets(); return; }
+  /* on ne reutilise maPosition que si elle vient vraiment du GPS */
+  if(maPosition && sourcePosition === "gps"){
+    chips("moi"); origine = "moi"; etatGeo(""); majTrajets(); return;
+  }
   parGPS();
 }
 
@@ -1806,8 +1843,13 @@ document.getElementById("loc-adr").addEventListener("keydown", e => {
 document.getElementById("loc-carte").addEventListener("click", locDepuisCarte);
 document.getElementById("loc-oublier").addEventListener("click", oublierLocation);
 
+/* Une location deja enregistree devient le point de depart des l'ouverture :
+   c'est le cas courant pendant le sejour, autant eviter un geste chaque fois. */
 const locEnregistree = lireLoc();
-if(locEnregistree && locEnregistree.lat) poserLocation(locEnregistree, false);
+if(locEnregistree && locEnregistree.lat){
+  poserLocation(locEnregistree, false);
+  choisirOrigine("location");
+}
 
 document.getElementById("origines").addEventListener("click", e => {
   const b = e.target.closest(".chip-origine");
