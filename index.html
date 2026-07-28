@@ -884,6 +884,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
     border-radius:8px;font-size:12px;color:#6B4700;line-height:1.5;
   }
   .pin.avalider{opacity:.62;border-style:dashed}
+  /* l'etoile prend l'accent du groupe, pour se detacher des libelles */
+  .ico-claude{color:#C08A2E;margin-right:7px}
   .rang details[open] > .rang-tete{background:var(--fond)}
   .rang details[open] .rang-nom{color:var(--cat)}
   .fiche{padding:2px 13px 13px;background:var(--fond)}
@@ -1059,7 +1061,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <span><i class="dot" style="background:#C98A17"></i> 🛒 commerces</span>
     <span><i class="dot" style="background:#0F7A6B"></i> 🏖️ plages</span>
     <span><i class="dot" style="background:#3B6FA8"></i> 🎟️ sorties</span>
-    <span><em>pastille pâle en pointillés : proposition non approuvée</em></span>
+    <span><em>pastille pâle en pointillés : proposition de Claude, à valider</em></span>
   </div>
 
   <div class="barre">
@@ -1093,7 +1095,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
   <footer>
     Données : fichier BEG_MEIL_2026.xlsx. Les horaires et tarifs sont ceux notés dans le fichier, à vérifier sur place en pleine saison.<br>
-    Le groupe "Non approuvées" rassemble des adresses qui ne viennent pas du fichier. Elles ont été proposées puis recoupées sur le web : existence et adresse postale vérifiées, mais ni horaires, ni tarifs, ni téléphones, qui sont les informations les plus vite périmées. À valider avant de les intégrer au séjour.<br>
+    Le groupe "Propositions de Claude" rassemble des adresses qui ne viennent pas du fichier : elles ont été suggérées par l'assistant, puis recoupées sur le web. Existence et adresse postale vérifiées, mais ni horaires, ni tarifs, ni téléphones, qui sont les informations les plus vite périmées. À valider avant de les intégrer au séjour.<br>
     Les points de la carte sont positionnés à l'adresse indiquée, à quelques dizaines de mètres près pour certains. Les boutons Google Maps et Waze, eux, utilisent l'adresse exacte.<br>
     Les distances et les temps sont calculés depuis ton point de départ, sur les serveurs de routage OpenStreetMap, OSRM puis Valhalla en secours. Ce point de départ est soit l'adresse de ta location, soit le GPS de l'appareil. L'adresse de la location reste dans la mémoire de ce navigateur : ce fichier publié ne contient ni cette adresse, ni ses coordonnées, ni aucun temps de trajet permettant de la situer.<br>
     Le bouton Google Maps ouvre la fiche du lieu : avis, photos et horaires annoncés. Le bouton Waze, lui, lance la navigation depuis l'endroit où tu te trouves.<br>
@@ -1243,7 +1245,7 @@ const LIEUX = [
    note:"Rendez-vous devant l'entrée de la cathédrale",
    lat:47.99558, lng:-4.10235},
 
-  /* ---------- Propositions non approuvées ----------
+  /* ---------- Propositions de Claude, pas encore approuvées ----------
      Ces adresses ne viennent pas du fichier BEG_MEIL_2026 : elles ont été
      proposées puis recoupées sur le web. Existence et adresse postale ont été
      vérifiées, mais volontairement NI horaires, NI tarifs, NI téléphones : ce
@@ -1727,6 +1729,21 @@ function ico(n){
          'aria-hidden="true" focusable="false"><path d="' + ICONES[n] + '"/></svg>';
 }
 
+/* Etoile rayonnante dessinee pour ce fichier, qui signale les adresses
+   suggerees automatiquement. Marque originale : ce n'est pas le logo officiel
+   d'Anthropic, qui est une marque deposee et que je ne reproduis pas ici.
+   Les huit rayons sont le meme triangle repete par rotation, ce qui evite
+   d'ecrire a la main vingt-quatre coordonnees trigonometriques. */
+function icoClaude(taille){
+  const t = taille || 15;
+  let rayons = "";
+  for(let a = 0; a < 360; a += 45)
+    rayons += '<path d="M12 1.8 L13.25 9.7 L10.75 9.7 Z" transform="rotate(' + a + ' 12 12)"/>';
+  return '<svg class="ico ico-claude" viewBox="0 0 24 24" width="' + t + '" height="' + t + '" ' +
+         'fill="currentColor" aria-hidden="true" focusable="false">' +
+         '<circle cx="12" cy="12" r="2.7"/>' + rayons + '</svg>';
+}
+
 /* Fiche de l'etablissement, et non l'itineraire : lancer la navigation est le
    role de Waze, juste a cote. On interroge avec le nom ET l'adresse, ce qui
    tombe sur la bonne fiche meme quand plusieurs commerces partagent une rue. */
@@ -1806,7 +1823,7 @@ const catsRepliees   = new Set(["avalider"]);
 
 function corpsFiche(l){
   let h = '<div class="fiche">';
-  if(l.avalider) h += '<p class="avis-neuf">Proposition non approuvée. Elle ne vient pas du fichier du séjour. Son existence et son adresse postale ont été recoupées sur le web, mais ni les horaires, ni les tarifs, ni le téléphone : à vérifier avant de se déplacer.</p>';
+  if(l.avalider) h += '<p class="avis-neuf">Proposition de Claude, pas encore approuvée. Elle ne vient pas du fichier du séjour. Son existence et son adresse postale ont été recoupées sur le web, mais ni les horaires, ni les tarifs, ni le téléphone : à vérifier avant de se déplacer.</p>';
   h += '<p class="ligne"><span class="k">📍</span><span class="v">'+l.adr+"</span></p>";
   if(l.horaires) h += '<p class="ligne"><span class="k">🕑</span><span class="v">'+l.horaires+"</span></p>";
   if(l.note) h += '<p class="ligne"><span class="k">💬</span><span class="v">'+l.note+"</span></p>";
@@ -1913,7 +1930,7 @@ function rendu(){
     if(aValider.length){
       const ouvert = !catsRepliees.has("avalider");
       h += '<li class="groupe" style="--cat:#C08A2E"><details class="groupe-bloc" data-cat="avalider"'+(ouvert?" open":"")+">";
-      h += '<summary class="groupe-tete"><i class="chevron"></i>⏳ Non approuvées'+
+      h += '<summary class="groupe-tete"><i class="chevron"></i>'+icoClaude()+'Propositions de Claude'+
            '<span class="groupe-nb">'+aValider.length+"</span></summary>";
       h += '<ul class="rangs">'+aValider.map(rangFiche).join("")+"</ul>";
       h += "</details></li>";
