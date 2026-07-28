@@ -1,7 +1,7 @@
 /* Service worker du carnet Beg Meil.
    Incremente VERSION a chaque deploiement : l'ancien cache est alors purge
    et les appareils recuperent la nouvelle version au lancement suivant. */
-const VERSION = "v2";
+const VERSION = "v3";
 const COQUILLE = "carnet-" + VERSION;
 const TUILES = "tuiles-" + VERSION;
 const TUILES_MAX = 400;
@@ -53,7 +53,7 @@ self.addEventListener("fetch", e => {
 
   /* Le routage doit toujours partir du reseau : une reponse en cache
      serait fausse des que le point de depart change. */
-  if(/router\.project-osrm\.org|routing\.openstreetmap\.de|valhalla1\.openstreetmap\.de/.test(url.hostname)){
+  if(/router\.project-osrm\.org|routing\.openstreetmap\.de|valhalla1\.openstreetmap\.de|nominatim\.openstreetmap\.org/.test(url.hostname)){
     return;
   }
 

@@ -755,6 +755,24 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .origines-titre{font-family:var(--mono);font-size:11px;letter-spacing:.1em;
     text-transform:uppercase;color:var(--encre-2);margin-right:2px}
   .chip-origine{padding:6px 12px;font-size:14px}
+  .reglages{
+    background:var(--carte);border-bottom:1px solid var(--trait);padding:0 18px;
+    font-size:14px;
+  }
+  .reglages summary{
+    cursor:pointer;padding:11px 0;font-family:var(--mono);font-size:12px;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--encre-2);
+  }
+  .reglages[open] summary{color:var(--encre)}
+  .reglages-note{margin:0 0 10px;font-size:12px;color:var(--encre-2);line-height:1.5}
+  .reglages-saisie{display:flex;gap:8px;margin-bottom:8px}
+  .reglages-saisie input{
+    flex:1;min-width:0;border:1px solid var(--trait);border-radius:9px;background:var(--fond);
+    padding:9px 11px;font-size:15px;font-family:inherit;color:var(--encre);
+  }
+  .reglages-saisie .btn{flex:0 0 auto;padding:9px 13px}
+  .reglages-etat{margin:2px 0 12px;font-size:13px;color:var(--encre)}
+  .pin.chez-moi{background:#7A4E9E}
   .geo-etat{
     display:none;margin:0;padding:9px 18px;background:#FBF4E2;border-bottom:1px solid var(--trait);
     font-size:13px;color:var(--encre);
@@ -954,10 +972,24 @@ svg.leaflet-image-layer.leaflet-interactive path {
   </div>
   <div class="origines" id="origines">
     <span class="origines-titre">Trajets depuis</span>
+    <button class="chip chip-origine" data-origine="location" aria-pressed="false" hidden>🏠 Ma location</button>
     <button class="chip chip-origine" data-origine="moi" aria-pressed="false">📍 Ma position GPS</button>
     <button class="chip chip-origine" data-origine="carte" aria-pressed="false">🗺️ Point de départ sur la carte</button>
   </div>
   <p class="geo-etat" id="geo-etat"></p>
+  <details class="reglages" id="reglages">
+    <summary>🏠 Ma location</summary>
+    <p class="reglages-note">Saisie une fois, gardée sur cet appareil uniquement. Elle n'est ni envoyée ni écrite dans le fichier publié.</p>
+    <div class="reglages-saisie">
+      <input id="loc-adr" type="text" autocomplete="off" placeholder="Adresse de la location">
+      <button class="btn" id="loc-chercher">Chercher</button>
+    </div>
+    <div class="reglages-saisie">
+      <button class="btn" id="loc-carte">Utiliser le point posé sur la carte</button>
+      <button class="btn" id="loc-oublier">Oublier</button>
+    </div>
+    <p class="reglages-etat" id="loc-etat"></p>
+  </details>
   <div class="maplegende">
     <span><button class="lien-fond" id="autre-fond">Changer de fond</button> <em id="nom-fond"></em></span>
     <span><i class="dot" style="background:#C4442E"></i> 🍽️ restos</span>
@@ -1377,7 +1409,98 @@ function parGPS(){
   }
 }
 
+/* ---------- Ma location : saisie locale, jamais publiee ----------
+   Rangee dans le stockage du navigateur, donc propre a cet appareil.
+   Le fichier mis en ligne n'en contient aucune trace. */
+const CLE_LOC = "carnet-beg-meil-location";
+let maLocation = null, marqueurLocation = null;
+
+function lireLoc(){
+  try{ return JSON.parse(localStorage.getItem(CLE_LOC) || "null"); }
+  catch(e){ return null; }
+}
+function ecrireLoc(v){
+  try{ v ? localStorage.setItem(CLE_LOC, JSON.stringify(v)) : localStorage.removeItem(CLE_LOC); return true; }
+  catch(e){ return false; }
+}
+function locEtat(txt){ document.getElementById("loc-etat").textContent = txt || ""; }
+
+function poserLocation(loc, persister){
+  maLocation = loc;
+  if(persister && !ecrireLoc(loc))
+    locEtat("Enregistrée pour cette visite seulement : ce navigateur refuse le stockage local.");
+  if(marqueurLocation) map.removeLayer(marqueurLocation);
+  marqueurLocation = L.marker([loc.lat, loc.lng], {
+    icon: L.divIcon({className:"", html:'<div class="pin chez-moi"><i>🏠</i></div>',
+                     iconSize:[32,32], iconAnchor:[16,30], popupAnchor:[0,-28]})
+  }).addTo(map).bindPopup(
+    "<b>Ma location</b><br><span class=\"pop-adr\">" + loc.adr + "</span>" +
+    '<div class="pop-actions">' +
+    '<a class="pop-btn gmaps" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=' +
+      encodeURIComponent(loc.adr) + '">' + ico("pin") + 'Google Maps</a>' +
+    '<a class="pop-btn waze" target="_blank" rel="noopener" href="https://www.waze.com/ul?q=' +
+      encodeURIComponent(loc.adr) + '&navigate=yes">' + ico("fleche") + 'Waze</a></div>' +
+    '<button type="button" class="pop-fermer" onclick="fermerBulle()">Fermer</button>'
+  );
+  const chip = document.querySelector('.chip-origine[data-origine="location"]');
+  if(chip) chip.hidden = false;
+  document.getElementById("loc-adr").value = loc.adr;
+}
+
+function chercherAdresse(){
+  const q = document.getElementById("loc-adr").value.trim();
+  if(q.length < 5){ locEtat("Saisis une adresse un peu plus précise."); return; }
+  locEtat("Recherche de l'adresse...");
+  fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(q))
+    .then(r => r.json())
+    .then(d => {
+      if(!d || !d.length){
+        locEtat("Adresse introuvable. Pose plutôt le point sur la carte, puis enregistre le.");
+        return;
+      }
+      poserLocation({adr: q, lat: +d[0].lat, lng: +d[0].lon}, true);
+      locEtat("Location enregistrée sur cet appareil.");
+      map.setView([maLocation.lat, maLocation.lng], 14);
+      choisirOrigine("location");
+    })
+    .catch(() => locEtat("Le service d'adresses ne répond pas. Pose le point sur la carte."));
+}
+
+function locDepuisCarte(){
+  if(!maPosition){
+    locEtat("Pose d'abord un point de départ sur la carte, puis reviens ici.");
+    return;
+  }
+  const q = document.getElementById("loc-adr").value.trim();
+  poserLocation({adr: q || "Ma location", lat: maPosition.lat, lng: maPosition.lng}, true);
+  locEtat("Location enregistrée sur cet appareil.");
+}
+
+function oublierLocation(){
+  ecrireLoc(null);
+  maLocation = null;
+  if(marqueurLocation){ map.removeLayer(marqueurLocation); marqueurLocation = null; }
+  const chip = document.querySelector('.chip-origine[data-origine="location"]');
+  if(chip){ chip.hidden = true; chip.setAttribute("aria-pressed","false"); }
+  document.getElementById("loc-adr").value = "";
+  locEtat("Location effacée de cet appareil.");
+}
+
 function choisirOrigine(o){
+  if(o === "location"){
+    if(!maLocation) return;
+    chips("location");
+    if(marqueurMoi){ map.removeLayer(marqueurMoi); marqueurMoi = null; }
+    maPosition = {lat: maLocation.lat, lng: maLocation.lng};
+    origine = "moi";
+    LIEUX.forEach(l => { if(l.rt) delete l.rt.moi; });
+    demande.moi = false; manquePied = false;
+    etatGeo("Trajets calculés depuis ta location...");
+    chargerRoutage("moi");
+    majTrajets();
+    setTimeout(() => etatGeo(""), 4000);
+    return;
+  }
   if(o === "carte"){ pointerSurCarte(); return; }
   if(maPosition){ chips("moi"); origine = "moi"; etatGeo(""); majTrajets(); return; }
   parGPS();
@@ -1672,6 +1795,16 @@ if("serviceWorker" in navigator){
     navigator.serviceWorker.register("sw.js").catch(() => {});
   });
 }
+
+document.getElementById("loc-chercher").addEventListener("click", chercherAdresse);
+document.getElementById("loc-adr").addEventListener("keydown", e => {
+  if(e.key === "Enter"){ e.preventDefault(); chercherAdresse(); }
+});
+document.getElementById("loc-carte").addEventListener("click", locDepuisCarte);
+document.getElementById("loc-oublier").addEventListener("click", oublierLocation);
+
+const locEnregistree = lireLoc();
+if(locEnregistree && locEnregistree.lat) poserLocation(locEnregistree, false);
 
 document.getElementById("origines").addEventListener("click", e => {
   const b = e.target.closest(".chip-origine");
