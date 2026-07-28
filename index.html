@@ -884,8 +884,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
     border-radius:8px;font-size:12px;color:#6B4700;line-height:1.5;
   }
   .pin.avalider{opacity:.62;border-style:dashed}
-  /* l'etoile prend l'accent du groupe, pour se detacher des libelles */
-  .ico-claude{color:#C08A2E;margin-right:7px}
+  /* teinte argile du logo Claude, et non l'accent ambre du groupe */
+  .ico-claude{color:#D97757;margin-right:7px;flex:none}
   .rang details[open] > .rang-tete{background:var(--fond)}
   .rang details[open] .rang-nom{color:var(--cat)}
   .fiche{padding:2px 13px 13px;background:var(--fond)}
@@ -1729,19 +1729,28 @@ function ico(n){
          'aria-hidden="true" focusable="false"><path d="' + ICONES[n] + '"/></svg>';
 }
 
-/* Etoile rayonnante dessinee pour ce fichier, qui signale les adresses
-   suggerees automatiquement. Marque originale : ce n'est pas le logo officiel
-   d'Anthropic, qui est une marque deposee et que je ne reproduis pas ici.
-   Les huit rayons sont le meme triangle repete par rotation, ce qui evite
-   d'ecrire a la main vingt-quatre coordonnees trigonometriques. */
-function icoClaude(taille){
-  const t = taille || 15;
-  let rayons = "";
-  for(let a = 0; a < 360; a += 45)
-    rayons += '<path d="M12 1.8 L13.25 9.7 L10.75 9.7 Z" transform="rotate(' + a + ' 12 12)"/>';
-  return '<svg class="ico ico-claude" viewBox="0 0 24 24" width="' + t + '" height="' + t + '" ' +
-         'fill="currentColor" aria-hidden="true" focusable="false">' +
-         '<circle cx="12" cy="12" r="2.7"/>' + rayons + '</svg>';
+/* Logo Claude Code, redessine depuis l'image fournie. Du pixel art sur une
+   grille de 40 : corps, deux bras lateraux, quatre pattes, deux yeux.
+   La regle evenodd creuse les yeux au lieu de les peindre en blanc, ce qui les
+   laisse prendre la couleur du fond quel qu'il soit.
+   viewBox resserre sur le dessin (y de 130 a 540), sinon le blanc autour
+   ecraserait la marque a la taille d'un pictogramme. */
+const TRACE_CLAUDE =
+  "M80 130 H560 V455 H80 Z" +      /* corps */
+  "M0 295 H80 V375 H0 Z" +         /* bras gauche */
+  "M560 295 H640 V375 H560 Z" +    /* bras droit */
+  "M120 455 H160 V540 H120 Z" +    /* pattes */
+  "M200 455 H240 V540 H200 Z" +
+  "M400 455 H440 V540 H400 Z" +
+  "M480 455 H520 V540 H480 Z" +
+  "M160 215 H200 V295 H160 Z" +    /* yeux, creuses par evenodd */
+  "M440 215 H480 V295 H440 Z";
+
+function icoClaude(largeur){
+  const l = largeur || 20;
+  return '<svg class="ico ico-claude" viewBox="0 130 640 410" width="' + l + '" height="' +
+         Math.round(l * 410 / 640) + '" fill="currentColor" fill-rule="evenodd" ' +
+         'aria-hidden="true" focusable="false"><path d="' + TRACE_CLAUDE + '"/></svg>';
 }
 
 /* Fiche de l'etablissement, et non l'itineraire : lancer la navigation est le
