@@ -743,9 +743,11 @@ svg.leaflet-image-layer.leaflet-interactive path {
   }
   .alerte-carte p{margin:0 0 12px}
   .alerte-carte .btn{display:inline-block;flex:none;margin:0 4px;text-decoration:none}
+  /* seul moyen manuel de reparer une carte qui ne charge pas : il faisait 17 px */
   .lien-fond{
-    background:none;border:0;padding:0;font:inherit;color:var(--sortie);
+    background:none;border:0;padding:10px 12px 10px 0;font:inherit;color:var(--sortie);
     text-decoration:underline;cursor:pointer;
+    display:inline-flex;align-items:center;min-height:44px;
   }
   .maplegende em{font-style:normal;opacity:.7}
   .origines{
@@ -768,15 +770,19 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .reglages-saisie{display:flex;gap:8px;margin-bottom:8px}
   .reglages-saisie input{
     flex:1;min-width:0;border:1px solid var(--trait);border-radius:9px;background:var(--fond);
-    padding:9px 11px;font-size:15px;font-family:inherit;color:var(--encre);
+    /* 16px minimum : en dessous, Safari iOS zoome la page a chaque prise de focus */
+    padding:9px 11px;font-size:16px;font-family:inherit;color:var(--encre);
   }
   .reglages-saisie .btn{flex:0 0 auto;padding:9px 13px}
   .reglages-etat{margin:2px 0 12px;font-size:13px;color:var(--encre)}
   .pin.chez-moi{background:#7A4E9E}
   .geo-etat{
-    display:none;margin:0;padding:9px 18px;background:#FBF4E2;border-bottom:1px solid var(--trait);
+    margin:0;padding:9px 18px;background:#FBF4E2;border-bottom:1px solid var(--trait);
     font-size:13px;color:var(--encre);
   }
+  /* masque par le CSS et non en JS : l'element reste dans l'arbre
+     d'accessibilite, sans quoi role="status" n'annonce rien */
+  .geo-etat:empty{display:none}
   .pin.moi{background:var(--sortie);border-color:#fff}
   .pin.moi i{width:13px;height:13px}
   .maplegende{
@@ -795,16 +801,21 @@ svg.leaflet-image-layer.leaflet-interactive path {
   }
   .filtres{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
   .filtres::-webkit-scrollbar{display:none}
+  /* min-height 44px : la recommandation Apple pour une cible tactile. Sur un
+     iPhone tenu d'une main, avec du sel ou du sable sur l'ecran, en dessous on
+     rate la cible. Le flex centre le libelle dans la hauteur ajoutee. */
   .chip{
     flex:0 0 auto;border:1px solid var(--trait);background:var(--carte);color:var(--encre);
     border-radius:999px;padding:7px 13px;font-size:14px;font-family:inherit;cursor:pointer;
     white-space:nowrap;
+    display:inline-flex;align-items:center;justify-content:center;min-height:44px;
   }
   .chip[aria-pressed="true"]{background:var(--encre);color:#fff;border-color:var(--encre)}
   .outils{display:flex;gap:8px;margin-top:8px}
   .outils input{
     flex:1;min-width:0;border:1px solid var(--trait);border-radius:10px;background:var(--carte);
-    padding:9px 12px;font-size:15px;font-family:inherit;color:var(--encre);
+    /* 16px minimum : en dessous, Safari iOS zoome la page a chaque prise de focus */
+    padding:9px 12px;font-size:16px;font-family:inherit;color:var(--encre);
   }
   .outils input:focus,.chip:focus-visible,button:focus-visible,a:focus-visible{
     outline:2px solid var(--sortie);outline-offset:2px;
@@ -818,19 +829,52 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .compte{padding:14px 18px 4px;font-size:12px;font-family:var(--mono);letter-spacing:.08em;
     text-transform:uppercase;color:var(--encre-2)}
   .liste{list-style:none;margin:0;padding:8px 12px}
-  .item{
+
+  /* ---------- sommaire replie ----------
+     15 adresses en 4 categories tiennent dans un sommaire. Le detail ne se
+     deplie que sur demande : la liste passe de 4399 px a environ 1000 px.
+     Tout le repliement est assure par <details>, donc sans JavaScript. */
+  .groupe{margin:0 0 10px}
+  .groupe-bloc{
     background:var(--carte);border:1px solid var(--trait);border-left:5px solid var(--cat);
-    border-radius:12px;padding:14px 14px 12px;margin-bottom:10px;
+    border-radius:12px;overflow:hidden;
   }
-  .titre{display:flex;align-items:baseline;gap:8px;justify-content:space-between}
-  .nom{
-    font-family:var(--display);font-weight:700;font-size:19px;line-height:1.15;
-    margin:0;letter-spacing:-.01em;
+  .groupe-tete{
+    display:flex;align-items:center;gap:9px;padding:13px;min-height:44px;cursor:pointer;
+    list-style:none;font-family:var(--mono);font-size:12px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--encre);
   }
-  .style{
-    font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
-    color:var(--cat);margin:5px 0 9px;
+  .groupe-tete::-webkit-details-marker{display:none}
+  .groupe-nb{margin-left:auto;color:var(--encre-2)}
+  .chevron{
+    flex:none;width:8px;height:8px;margin:-3px 2px 0 0;
+    border-right:2px solid var(--encre-2);border-bottom:2px solid var(--encre-2);
+    transform:rotate(45deg);transition:transform .15s;
   }
+  details[open] > .groupe-tete .chevron{transform:rotate(-135deg);margin-top:2px}
+  .rangs{list-style:none;margin:0;padding:0}
+  .rang{border-top:1px solid var(--trait)}
+  .rang-tete{
+    display:flex;align-items:center;gap:10px;padding:9px 13px;min-height:44px;
+    cursor:pointer;list-style:none;
+  }
+  .rang-tete::-webkit-details-marker{display:none}
+  .rang-titre{flex:1;min-width:0}
+  .rang-nom{
+    font-family:var(--display);font-weight:700;font-size:17px;line-height:1.2;
+    letter-spacing:-.01em;
+  }
+  .rang-style{
+    font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--encre-2);margin-left:7px;white-space:nowrap;
+  }
+  .rang-trajet{
+    flex:none;font-family:var(--mono);font-size:11px;color:var(--encre-2);
+    background:var(--fond);border:1px solid var(--trait);border-radius:999px;padding:3px 8px;
+  }
+  .rang details[open] > .rang-tete{background:var(--fond)}
+  .rang details[open] .rang-nom{color:var(--cat)}
+  .fiche{padding:2px 13px 13px;background:var(--fond)}
   .ligne{display:flex;gap:8px;font-size:14px;margin:5px 0;color:var(--encre)}
   .ligne .k{flex:0 0 20px;text-align:center;opacity:.65}
   .ligne .v{flex:1;min-width:0}
@@ -865,6 +909,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     flex:1;text-align:center;text-decoration:none!important;font-size:13px;font-weight:600;
     border-radius:7px;padding:7px 6px;border:1px solid var(--encre);
     color:var(--encre)!important;background:#fff;white-space:nowrap;
+    display:inline-flex;align-items:center;justify-content:center;min-height:44px;
   }
   .pop-btn.gmaps{background:#4285F4;border-color:#1A62D6;color:#fff!important}
   .pop-btn.waze{background:#33CCFF;border-color:#0F9BC7;color:#06323F!important}
@@ -873,6 +918,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     flex:1;text-align:center;text-decoration:none;font-size:14px;font-weight:600;
     border-radius:9px;padding:9px 8px;border:1px solid var(--encre);color:var(--encre);
     background:var(--carte);cursor:pointer;font-family:inherit;
+    display:inline-flex;align-items:center;justify-content:center;min-height:44px;
   }
   .btn.plein{background:var(--encre);color:#fff}
   .ico{vertical-align:-3px;margin-right:6px;flex:none}
@@ -916,7 +962,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     text-align:center;border-radius:6px;padding:4px 1px 5px;font-family:var(--mono);
     border:1px solid var(--trait);cursor:pointer;color:inherit;
   }
-  .coefcell u{display:block;text-decoration:none;font-size:10px;opacity:.65;line-height:1.4}
+  .coefcell u{display:block;text-decoration:none;font-size:11px;color:var(--encre-2);line-height:1.4}
   .coefcell b{display:block;font-size:12px;font-weight:600;line-height:1.35;min-height:33px}
   .coefcell[aria-pressed="true"]{
     border-color:var(--encre);box-shadow:0 0 0 2px var(--encre);font-weight:700;
@@ -978,7 +1024,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <button class="chip chip-origine" data-origine="location" aria-pressed="false">🏠 Ma location</button>
     <button class="chip chip-origine" data-origine="moi" aria-pressed="false">📍 Ma position GPS</button>
   </div>
-  <p class="geo-etat" id="geo-etat"></p>
+  <p class="geo-etat" id="geo-etat" role="status"></p>
   <details class="reglages" id="reglages">
     <summary>🏠 Ma location</summary>
     <p class="reglages-note">Saisie une fois, gardée sur cet appareil uniquement. Elle n'est ni envoyée ni écrite dans le fichier publié. Les trajets voiture et à pied partent ensuite de cette adresse.</p>
@@ -990,7 +1036,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
       <button class="btn" id="loc-carte">🗺️ Pointer sur la carte</button>
       <button class="btn" id="loc-oublier">Oublier</button>
     </div>
-    <p class="reglages-etat" id="loc-etat"></p>
+    <p class="reglages-etat" id="loc-etat" role="status"></p>
   </details>
   <div class="maplegende">
     <span><button class="lien-fond" id="autre-fond">Changer de fond</button> <em id="nom-fond"></em></span>
@@ -1017,7 +1063,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     </div>
   </div>
 
-  <p class="compte" id="compte"></p>
+  <p class="compte" id="compte" role="status"></p>
   <ul class="liste" id="liste"></ul>
 
   <section class="bloc">
@@ -1052,6 +1098,25 @@ svg.leaflet-image-layer.leaflet-interactive path {
 const COUL = {resto:"#C4442E", commerce:"#C98A17", plage:"#0F7A6B", sortie:"#3B6FA8"};
 const AUTO_ICONE = "🚗", PIED_ICONE = "🚶";
 const EMOJ = {resto:"🍽️", commerce:"🛒", plage:"🏖️", sortie:"🎟️"};
+
+/* La regle CSS prefers-reduced-motion ne coupe que les transitions CSS. Les
+   mouvements genants, eux, sont pilotes en JS : travelling de carte et
+   defilement. On lit donc la preference ici aussi. */
+const DOUX = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* L'adresse de la location est du texte libre, garde en localStorage puis
+   reinjecte dans le HTML d'une bulle a chaque lancement. Sans echappement, un
+   simple & ou < casse la bulle, et une balise s'executerait a chaque ouverture. */
+const esc = s => String(s).replace(/[&<>"']/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* Recherche : on replie les accents des deux cotes. Le fichier lui meme est
+   inconstant, il ecrit "Place de l'Eglise" sans accent mais "Crêperie" avec,
+   si bien qu'aucune orthographe ne trouvait tout. Et sur un telephone on tape
+   rarement les accents. */
+const COMBINANTES = new RegExp("[\\u0300-\\u036f]", "g");
+const sansAccent = s =>
+  String(s).normalize("NFD").replace(COMBINANTES, "").toLowerCase();
 
 const LIEUX = [
   {cat:"resto", nom:"Aux Viviers de Penfoulic", style:"Fruits de mer",
@@ -1175,7 +1240,10 @@ const alerte = document.getElementById("alerte-carte");
 const nomFond = document.getElementById("nom-fond");
 
 function poserFond(i){
-  if(couche) map.removeLayer(couche);
+  /* Detacher les ecouteurs de l'ancienne couche. Ils ecrivent dans les memes
+     compteurs globaux que poserFond vient de remettre a zero : les tuiles encore
+     en vol du fond precedent faisaient cascader les fonds suivants a tort. */
+  if(couche){ couche.off(); map.removeLayer(couche); }
   iFond = ((i % FONDS.length) + FONDS.length) % FONDS.length;
   const f = FONDS[iFond];
   echecs = 0; charge = false;
@@ -1326,6 +1394,9 @@ function essayer(cle, mode, rang){
   const liste = ROUTEURS[mode];
   if(rang >= liste.length){
     if(mode === "pied") manquePied = true;
+    /* rouvrir la porte : sans ca, demande[cle] restait verrouille et le retour
+       du reseau ne relancait jamais le calcul */
+    demande[cle] = false;
     majTrajets();
     return;
   }
@@ -1342,15 +1413,13 @@ let manquePied = false;
 function chargerRoutage(cle){
   if(demande[cle]) return;
   demande[cle] = true;
-  if(navigator.onLine === false){ manquePied = true; majTrajets(); return; }
+  if(navigator.onLine === false){ demande[cle] = false; manquePied = true; majTrajets(); return; }
   essayer(cle, "auto", 0);
   essayer(cle, "pied", 0);
 }
 
 function etatGeo(txt){
-  const e = document.getElementById("geo-etat");
-  e.textContent = txt || "";
-  e.style.display = txt ? "block" : "none";
+  document.getElementById("geo-etat").textContent = txt || "";
 }
 
 function chips(actif){
@@ -1368,7 +1437,10 @@ function poserPosition(lat, lng, libelle){
   marqueurMoi = L.marker([lat, lng], {
     draggable: true,
     icon: L.divIcon({className:"", html:'<div class="pin moi"><i></i></div>',
-                     iconSize:[30,30], iconAnchor:[15,28]})
+                     /* aligne sur les deux autres marqueurs : le CSS .pin impose
+                        32px quoi qu'annonce iconSize, et sans popupAnchor la
+                        bulle recouvrait la pointe qu'il faut saisir pour glisser */
+                     iconSize:[32,32], iconAnchor:[16,30], popupAnchor:[0,-28]})
   }).addTo(map).bindPopup(libelle + "<br>Faites glisser pour ajuster");
   marqueurMoi.on("dragend", e => {
     const p = e.target.getLatLng();
@@ -1445,7 +1517,7 @@ function poserLocation(loc, persister){
     icon: L.divIcon({className:"", html:'<div class="pin chez-moi"><i>🏠</i></div>',
                      iconSize:[32,32], iconAnchor:[16,30], popupAnchor:[0,-28]})
   }).addTo(map).bindPopup(
-    "<b>Ma location</b><br><span class=\"pop-adr\">" + loc.adr + "</span>" +
+    "<b>Ma location</b><br><span class=\"pop-adr\">" + esc(loc.adr) + "</span>" +
     '<div class="pop-actions">' +
     '<a class="pop-btn gmaps" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=' +
       encodeURIComponent(loc.adr) + '">' + ico("pin") + 'Google Maps</a>' +
@@ -1476,18 +1548,44 @@ function chercherAdresse(){
 }
 
 /* Repli quand l'adresse ne se trouve pas, ou quand on prefere viser la maison
-   a l'oeil. Ne demande aucune permission, contrairement au GPS. */
+   a l'oeil. Ne demande aucune permission, contrairement au GPS.
+   Le mode doit pouvoir s'annuler : arme indefiniment, un appui plus tard pour
+   recadrer la carte aurait redefini la location en silence. */
+let viseurArme = null;
+
+function arreterViseur(){
+  if(!viseurArme) return;
+  const h = viseurArme;
+  viseurArme = null;
+  map.off("click", h);
+  clearTimeout(h.minuteur);
+  map.getContainer().style.cursor = "";
+  document.getElementById("loc-carte").textContent = "🗺️ Pointer sur la carte";
+  etatGeo("");
+}
+
 function locDepuisCarte(){
+  if(viseurArme){ arreterViseur(); locEtat("Pointage annulé."); return; }
   const q = document.getElementById("loc-adr").value.trim();
-  locEtat("Touchez la carte à l'emplacement de la location.");
+  /* l'instruction va sous la carte, pas au fond du panneau depliant : c'est la
+     qu'on regarde au moment de viser */
+  etatGeo("Touchez la carte à l'emplacement de la location. Rappuyez sur le bouton pour annuler.");
+  locEtat("");
+  document.getElementById("loc-carte").textContent = "Annuler le pointage";
   map.getContainer().style.cursor = "crosshair";
-  document.getElementById("map").scrollIntoView({behavior:"smooth", block:"center"});
-  map.once("click", e => {
-    map.getContainer().style.cursor = "";
-    poserLocation({adr: q || "Ma location", lat: e.latlng.lat, lng: e.latlng.lng}, true);
+  viseurArme = e => {
+    const p = e.latlng;
+    arreterViseur();
+    poserLocation({adr: q || "Ma location", lat: p.lat, lng: p.lng}, true);
     locEtat("Location enregistrée sur cet appareil.");
     choisirOrigine("location");
-  });
+  };
+  viseurArme.minuteur = setTimeout(() => {
+    arreterViseur();
+    locEtat("Pointage expiré, rappuyez sur le bouton si besoin.");
+  }, 30000);
+  map.on("click", viseurArme);
+  document.getElementById("map").scrollIntoView({behavior: DOUX ? "smooth" : "auto", block:"center"});
 }
 
 function oublierLocation(){
@@ -1513,7 +1611,7 @@ function demanderLocation(){
   const d = document.getElementById("reglages");
   d.open = true;
   locEtat("Saisis l'adresse de la location, ou pointe la sur la carte.");
-  d.scrollIntoView({behavior:"smooth", block:"center"});
+  d.scrollIntoView({behavior: DOUX ? "smooth" : "auto", block:"center"});
   document.getElementById("loc-adr").focus();
 }
 
@@ -1614,54 +1712,131 @@ function eloignement(l){
   return m == null ? Infinity : m;
 }
 
+/* Le carnet tient en 4 categories et 15 adresses : on affiche le sommaire, et
+   le detail ne se deplie qu'a la demande. Les 4 boutons pesaient 99 px sur une
+   fiche de 305, pour des actions qui ne servent qu'une fois l'adresse choisie. */
+const CATS = [
+  {cle:"resto",    titre:"Restos",    emoji:"🍽️"},
+  {cle:"commerce", titre:"Commerces", emoji:"🛒"},
+  {cle:"plage",    titre:"Plages",    emoji:"🏖️"},
+  {cle:"sortie",   titre:"Sorties",   emoji:"🎟️"}
+];
+const fichesOuvertes = new Set();   /* noms des fiches depliees */
+const catsRepliees   = new Set();   /* categories fermees a la main */
+
+function corpsFiche(l){
+  let h = '<div class="fiche">';
+  h += '<p class="ligne"><span class="k">📍</span><span class="v">'+l.adr+"</span></p>";
+  if(l.horaires) h += '<p class="ligne"><span class="k">🕑</span><span class="v">'+l.horaires+"</span></p>";
+  if(l.note) h += '<p class="ligne"><span class="k">💬</span><span class="v">'+l.note+"</span></p>";
+  if(l.tel){
+    const brut = "+33"+l.tel.replace(/-/g,"").slice(1);
+    h += '<p class="ligne"><span class="k">📞</span><span class="v"><a href="tel:'+brut+'">'+l.tel+"</a></span></p>";
+  }
+  const tr = trajets(l);
+  if(tr.length){
+    h += '<div class="trajets">';
+    tr.forEach(t => { h += '<span class="trajet">'+t+"</span>"; });
+    h += "</div>";
+  }
+  h += '<div class="actions">';
+  h += '<button class="btn btn-carte">Voir sur la carte</button>';
+  if(l.ta) h += '<a class="btn ta" href="'+l.ta+'" target="_blank" rel="noopener">'+ico("etoile")+'TripAdvisor</a>';
+  h += "</div>";
+  h += '<div class="actions">';
+  h += '<a class="btn gmaps" href="'+lienGoogle(l)+'" target="_blank" rel="noopener">'+ico("pin")+'Google Maps</a>';
+  h += '<a class="btn waze" href="'+lienWaze(l)+'" target="_blank" rel="noopener">'+ico("fleche")+'Waze</a>';
+  h += "</div></div>";
+  return h;
+}
+
+/* Dans le rang on ne garde que la duree : avec "5,2 km / 7 mn" la pastille est
+   si large que 10 rangs sur 15 passent a deux lignes. Le detail reste en fiche. */
+function trajetCourt(l){
+  const r = l.rt && l.rt.moi;
+  if(!r) return "";
+  if(r.mnAuto) return AUTO_ICONE + " " + r.mnAuto;
+  if(r.mnPied) return PIED_ICONE + " " + r.mnPied;
+  return "";
+}
+
+function rangFiche(l){
+  const court = trajetCourt(l);
+  let h = '<li class="rang" style="--cat:'+COUL[l.cat]+'">';
+  h += '<details data-nom="'+l.nom.replace(/"/g,"&quot;")+'"'+(fichesOuvertes.has(l.nom)?" open":"")+">";
+  h += '<summary class="rang-tete">';
+  h += '<span class="rang-titre"><span class="rang-nom">'+l.nom+"</span>";
+  h += '<span class="rang-style">'+l.style+"</span></span>";
+  if(court) h += '<span class="rang-trajet">'+court+"</span>";
+  h += "</summary>";
+  h += corpsFiche(l);
+  h += "</details></li>";
+  return h;
+}
+
+/* L'evenement toggle de <details> part en differe : s'y fier ferait perdre
+   l'etat deplie quand rendu() est rappelee dans le meme tour de boucle.
+   Relire le DOM avant de le remplacer est la seule methode fiable. */
+function memoriserOuvertures(){
+  liste.querySelectorAll(".rang > details").forEach(d => {
+    if(d.open) fichesOuvertes.add(d.dataset.nom); else fichesOuvertes.delete(d.dataset.nom);
+  });
+  liste.querySelectorAll(".groupe-bloc[data-cat]").forEach(d => {
+    if(d.open) catsRepliees.delete(d.dataset.cat); else catsRepliees.add(d.dataset.cat);
+  });
+}
+
 function rendu(){
+  memoriserOuvertures();
   const filtres = LIEUX.filter(l => {
     if(catActive !== "tout" && l.cat !== catActive) return false;
     if(!recherche) return true;
-    const t = [l.nom, l.style, l.adr, l.horaires, l.note].join(" ").toLowerCase();
+    const t = sansAccent([l.nom, l.style, l.adr, l.horaires, l.note].join(" "));
     return t.includes(recherche);
   });
   if(tri !== "fichier") filtres.sort((a,b) => eloignement(a) - eloignement(b));
 
-  compte.textContent = filtres.length + (filtres.length > 1 ? " adresses" : " adresse");
-  liste.innerHTML = "";
+  const nb = filtres.length + (filtres.length > 1 ? " adresses" : " adresse");
+  /* sans point de depart, eloignement() vaut Infinity partout : le tri ne
+     change rien et l'utilisateur croit a une panne. Autant le dire. */
+  const sansDepart = tri !== "fichier" && !LIEUX.some(l => l.rt && l.rt.moi);
+  compte.textContent = sansDepart
+    ? nb + " — choisis d'abord un point de départ pour trier par distance"
+    : nb;
 
   if(!filtres.length){
     liste.innerHTML = '<li class="vide">Rien à cet endroit du carnet. Effacez la recherche ou changez de catégorie.</li>';
     return;
   }
 
-  filtres.forEach(l => {
-    const li = document.createElement("li");
-    li.className = "item";
-    li.style.setProperty("--cat", COUL[l.cat]);
-    let h = '<div class="titre"><h3 class="nom">'+l.nom+"</h3></div>";
-    h += '<p class="style">'+l.style+"</p>";
-    h += '<p class="ligne"><span class="k">📍</span><span class="v">'+l.adr+"</span></p>";
-    if(l.horaires) h += '<p class="ligne"><span class="k">🕑</span><span class="v">'+l.horaires+"</span></p>";
-    if(l.note) h += '<p class="ligne"><span class="k">💬</span><span class="v">'+l.note+"</span></p>";
-    if(l.tel){
-      const brut = "+33"+l.tel.replace(/-/g,"").slice(1);
-      h += '<p class="ligne"><span class="k">📞</span><span class="v"><a href="tel:'+brut+'">'+l.tel+"</a></span></p>";
-    }
-    h += '<div class="trajets">';
-    trajets(l).forEach(t => { h += '<span class="trajet">'+t+"</span>"; });
-    h += "</div>";
-    h += '<div class="actions">';
-    h += '<button class="btn btn-carte">Voir sur la carte</button>';
-    if(l.ta) h += '<a class="btn ta" href="'+l.ta+'" target="_blank" rel="noopener">'+ico("etoile")+'TripAdvisor</a>';
-    h += "</div>";
-    h += '<div class="actions">';
-    h += '<a class="btn gmaps" href="'+lienGoogle(l)+'" target="_blank" rel="noopener">'+ico("pin")+'Google Maps</a>';
-    h += '<a class="btn waze" href="'+lienWaze(l)+'" target="_blank" rel="noopener">'+ico("fleche")+'Waze</a>';
-    h += "</div>";
-    li.innerHTML = h;
-    li.querySelector(".btn-carte").addEventListener("click", () => {
-      map.setView([l.lat, l.lng], 15, {animate:true});
-      l.marker.openPopup();
-      document.getElementById("map").scrollIntoView({behavior:"smooth", block:"center"});
+  /* recherche ou tri par distance : le classement par categorie n'a plus de sens */
+  const aPlat = recherche || tri !== "fichier";
+  let h = "";
+  if(aPlat){
+    h = '<li class="groupe" style="--cat:var(--encre-2)"><div class="groupe-bloc">' +
+        '<ul class="rangs">' + filtres.map(rangFiche).join("") + "</ul></div></li>";
+  } else {
+    CATS.forEach(c => {
+      const lot = filtres.filter(l => l.cat === c.cle);
+      if(!lot.length) return;
+      const ouvert = !catsRepliees.has(c.cle);
+      h += '<li class="groupe" style="--cat:'+COUL[c.cle]+'"><details class="groupe-bloc" data-cat="'+c.cle+'"'+(ouvert?" open":"")+">";
+      h += '<summary class="groupe-tete"><i class="chevron"></i>'+c.emoji+" "+c.titre+
+           '<span class="groupe-nb">'+lot.length+"</span></summary>";
+      h += '<ul class="rangs">'+lot.map(rangFiche).join("")+"</ul>";
+      h += "</details></li>";
     });
-    liste.appendChild(li);
+  }
+  liste.innerHTML = h;
+
+  liste.querySelectorAll(".rang > details").forEach(d => {
+    const l = LIEUX.find(x => x.nom === d.dataset.nom);
+    if(!l) return;
+    d.querySelector(".btn-carte").addEventListener("click", () => {
+      map.setView([l.lat, l.lng], 15, {animate: DOUX});
+      l.marker.openPopup();
+      document.getElementById("map").scrollIntoView({behavior: DOUX ? "smooth" : "auto", block:"center"});
+    });
   });
 }
 
@@ -1669,7 +1844,9 @@ document.getElementById("filtres").addEventListener("click", e => {
   const b = e.target.closest(".chip");
   if(!b) return;
   catActive = b.dataset.cat;
-  document.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", c === b));
+  /* sans le prefixe #filtres, ce selecteur eteignait aussi les puces d'origine,
+     qui portent la meme classe : l'etat affiche mentait sur l'etat reel */
+  document.querySelectorAll("#filtres .chip").forEach(c => c.setAttribute("aria-pressed", c === b));
   LIEUX.forEach(l => {
     const visible = catActive === "tout" || l.cat === catActive;
     if(visible){ l.marker.addTo(map); } else { map.removeLayer(l.marker); }
@@ -1680,7 +1857,7 @@ document.getElementById("filtres").addEventListener("click", e => {
 });
 
 document.getElementById("q").addEventListener("input", e => {
-  recherche = e.target.value.trim().toLowerCase();
+  recherche = sansAccent(e.target.value.trim());
   rendu();
 });
 document.getElementById("tri").addEventListener("change", e => {
@@ -1811,8 +1988,11 @@ function rendreMarees(){
       c.className = "coefcell";
       c.type = "button";
       c.dataset.jour = d.j;
+      /* Pas de bascule en blanc : l'alpha du fond est plafonne a 0,63, donc le
+         vert reste clair et le texte blanc n'y tient que 1,9:1 de contraste.
+         Ce sont justement les jours de grande maree, ceux qu'on cherche pour la
+         peche a pied, qui devenaient illisibles en plein soleil. */
       c.style.background = "rgba(15,122,107," + (0.08 + t * 0.55).toFixed(2) + ")";
-      if(t > 0.6) c.style.color = "#fff";
       c.innerHTML = "<u>" + d.j + "</u><b>" + coefs.join("<br>") + "</b>";
       c.addEventListener("click", () => { jourVu = d.j; rendreDetail(); });
       grille.appendChild(c);
@@ -1854,6 +2034,12 @@ if(locEnregistree && locEnregistree.lat){
 document.getElementById("origines").addEventListener("click", e => {
   const b = e.target.closest(".chip-origine");
   if(b) choisirOrigine(b.dataset.origine);
+});
+
+/* Arrivee sans reseau puis retour de la 4G : sans ceci, plus rien ne relancait
+   le calcul des trajets avant un rechargement complet de la page. */
+window.addEventListener("online", () => {
+  if(maPosition){ demande.moi = false; manquePied = false; chargerRoutage("moi"); }
 });
 </script>
 </body>
