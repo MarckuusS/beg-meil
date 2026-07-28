@@ -1,7 +1,7 @@
 /* Service worker du carnet Beg Meil.
    Incremente VERSION a chaque deploiement : l'ancien cache est alors purge
    et les appareils recuperent la nouvelle version au lancement suivant. */
-const VERSION = "v1";
+const VERSION = "v2";
 const COQUILLE = "carnet-" + VERSION;
 const TUILES = "tuiles-" + VERSION;
 const TUILES_MAX = 400;

@@ -10,6 +10,7 @@ Application web installable, à héberger sur GitHub Pages.
 | `manifest.json` | nom, icônes, couleurs, lancement plein écran |
 | `sw.js` | service worker, cache hors ligne |
 | `icons/` | icônes 192, 512, maskable, Apple, favicon |
+| `robots.txt` | consigne aux moteurs de recherche |
 
 Aucune dépendance externe à installer, aucun build.
 
@@ -104,3 +105,14 @@ reste en mémoire de la page et n'est jamais enregistré.
 Attention : un dépôt GitHub public rend ces fichiers lisibles par tous.
 Le contenu ne comporte que des adresses publiques, mais un dépôt privé
 avec Pages reste possible sur les offres payantes.
+
+## Exclusion des moteurs de recherche
+
+`index.html` porte une balise `<meta name="robots" content="noindex, ...">`
+et `robots.txt` laisse volontairement le parcours ouvert. C'est la
+combinaison correcte : un `Disallow: /` empêcherait le robot de lire la
+page, donc de voir la consigne `noindex`, et l'adresse pourrait quand
+même finir listée si un lien pointait dessus.
+
+Le dépôt lui même, sur github.com, reste visible et référençable. Le
+laisser sans description ni sujets limite ce qu'on peut en déduire.

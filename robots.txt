@@ -1,0 +1,6 @@
+# L'exclusion des moteurs est portee par la balise meta robots de index.html.
+# Le parcours reste donc autorise : un robot qui ne peut pas lire la page
+# ne verrait jamais la consigne noindex qu'elle contient.
+
+User-agent: *
+Allow: /
