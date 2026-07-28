@@ -872,6 +872,18 @@ svg.leaflet-image-layer.leaflet-interactive path {
     flex:none;font-family:var(--mono);font-size:11px;color:var(--encre-2);
     background:var(--fond);border:1px solid var(--trait);border-radius:999px;padding:3px 8px;
   }
+  /* Adresses proposees mais pas encore validees : elles doivent se distinguer
+     au premier coup d'oeil de celles du fichier BEG_MEIL_2026. */
+  .neuf{
+    flex:none;font-family:var(--mono);font-size:9px;letter-spacing:.07em;
+    text-transform:uppercase;color:#8A5A00;background:#FBF4E2;
+    border:1px solid #E0CFA0;border-radius:999px;padding:2px 7px;white-space:nowrap;
+  }
+  .avis-neuf{
+    margin:9px 0 2px;padding:8px 10px;background:#FBF4E2;border:1px solid #E0CFA0;
+    border-radius:8px;font-size:12px;color:#6B4700;line-height:1.5;
+  }
+  .pin.avalider{opacity:.62;border-style:dashed}
   .rang details[open] > .rang-tete{background:var(--fond)}
   .rang details[open] .rang-nom{color:var(--cat)}
   .fiche{padding:2px 13px 13px;background:var(--fond)}
@@ -1044,6 +1056,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <span><i class="dot" style="background:#C98A17"></i> 🛒 commerces</span>
     <span><i class="dot" style="background:#0F7A6B"></i> 🏖️ plages</span>
     <span><i class="dot" style="background:#3B6FA8"></i> 🎟️ sorties</span>
+    <span><em>pastille pâle en pointillés : proposition non approuvée</em></span>
   </div>
 
   <div class="barre">
@@ -1077,6 +1090,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
   <footer>
     Données : fichier BEG_MEIL_2026.xlsx. Les horaires et tarifs sont ceux notés dans le fichier, à vérifier sur place en pleine saison.<br>
+    Le groupe "Non approuvées" rassemble des adresses qui ne viennent pas du fichier. Elles ont été proposées puis recoupées sur le web : existence et adresse postale vérifiées, mais ni horaires, ni tarifs, ni téléphones, qui sont les informations les plus vite périmées. À valider avant de les intégrer au séjour.<br>
     Les points de la carte sont positionnés à l'adresse indiquée, à quelques dizaines de mètres près pour certains. Les boutons Google Maps et Waze, eux, utilisent l'adresse exacte.<br>
     Les distances et les temps sont calculés depuis ton point de départ, sur les serveurs de routage OpenStreetMap, OSRM puis Valhalla en secours. Ce point de départ est soit l'adresse de ta location, soit le GPS de l'appareil. L'adresse de la location reste dans la mémoire de ce navigateur : ce fichier publié ne contient ni cette adresse, ni ses coordonnées, ni aucun temps de trajet permettant de la situer.<br>
     Les boutons Google Maps et Waze partent toujours de l'endroit où tu te trouves, quel que soit le sélecteur.<br>
@@ -1218,7 +1232,55 @@ const LIEUX = [
    adr:"Place Saint-Corentin, 29000 Quimper",
    horaires:"1h30, les mardis 11 ou 18/08 à 10h30, 9 € par personne",
    note:"Rendez-vous devant l'entrée de la cathédrale",
-   lat:47.99558, lng:-4.10235}
+   lat:47.99558, lng:-4.10235},
+
+  /* ---------- Propositions non approuvées ----------
+     Ces adresses ne viennent pas du fichier BEG_MEIL_2026 : elles ont été
+     proposées puis recoupées sur le web. Existence et adresse postale ont été
+     vérifiées, mais volontairement NI horaires, NI tarifs, NI téléphones : ce
+     sont les données qui se périment le plus vite. Les coordonnées viennent de
+     Nominatim, ou de la Base Adresse Nationale pour le Mesmeur et Mousterlin.
+     Le drapeau avalider les range dans un groupe a part et grise leur pastille.
+     Retirer avalider:true suffit a faire passer une adresse dans le carnet. */
+  {cat:"resto", nom:"Crêperie l'Epi d'Or", style:"Crêperie traditionnelle", avalider:true,
+   adr:"19 Ty Keravec, 29170 Pleuven",
+   note:"Grande chaumière à l'intérieur des terres, loin du bord de mer du Cap Coz. Galettes de blé noir faites main, cidres régionaux, options sans gluten. Grand parking privé. Signalée par l'office de tourisme de Fouesnant.",
+   lat:47.91012, lng:-4.05685},
+
+  {cat:"resto", nom:"La Table du Mesmeur", style:"Bistronomie", avalider:true,
+   adr:"Manoir du Mesmeur, 13 allée du Mesmeur, 29940 La Forêt-Fouesnant",
+   note:"Dans le manoir du golf de Cornouaille, mais ouverte à tous, pas besoin d'être golfeur. Produits frais locaux, terrasse avec vue sur la mer. Le service se fait surtout le midi, l'ouverture du soir n'est pas systématique.",
+   lat:47.90544, lng:-3.97678},
+
+  {cat:"resto", nom:"L'Alhambra", style:"Cuisine de la mer", avalider:true,
+   adr:"1 corniche de l'Estuaire, 29950 Bénodet",
+   note:"Bâtisse en rotonde face à l'estuaire de l'Odet, près du phare et de la plage du Coq. Autre rive que le Cap Coz. À coupler avec une remontée de l'Odet en vedette.",
+   lat:47.87245, lng:-4.11124},
+
+  {cat:"resto", nom:"La Porte au Vin", style:"Traditionnel et crêperie", avalider:true,
+   adr:"9 place Saint-Guénolé, Ville Close, 29900 Concarneau",
+   note:"Ancien bistrot de pêcheurs au coeur de la Ville Close, murs de pierre et deux cheminées. Carte mixte poissons, viandes et galettes, de quoi contenter toute une tablée. Très fréquenté en août, mieux vaut réserver.",
+   lat:47.87311, lng:-3.91348},
+
+  {cat:"commerce", nom:"Marché de Fouesnant", style:"Marché hebdomadaire", avalider:true,
+   adr:"Place du Général de Gaulle, 29170 Fouesnant",
+   note:"Le vendredi matin toute l'année, environ 150 commerçants sur la place et les rues alentour. Complément direct du Leclerc. Il existe aussi un marché bio le samedi matin place de l'Église, et un marché d'été le mercredi matin à Beg Meil, parking de Kervastard.",
+   lat:47.89437, lng:-4.01156},
+
+  {cat:"sortie", nom:"Embarcadère des Vedettes de l'Odet", style:"Départ bateau pour les Glénan", avalider:true,
+   adr:"Chemin de la Cale, Beg Meil, 29170 Fouesnant",
+   note:"Le départ vers l'archipel des Glénan se fait depuis la cale de Beg Meil, à pied depuis le village. Environ 1h de traversée vers l'île Saint-Nicolas. Une liaison maritime rejoint aussi Concarneau sans prendre la route. Pas de parking sur la cale même, stationner place de l'Église ou plage de Kerambigorn.",
+   lat:47.86094, lng:-3.98436},
+
+  {cat:"sortie", nom:"Ville Close de Concarneau", style:"Cité fortifiée", avalider:true,
+   adr:"Ville Close, rue Saint-Guénolé, 29900 Concarneau",
+   note:"Accès libre et gratuit toute l'année par le pont piéton. Rues pavées, remparts et chemin de ronde. Sortie de repli par temps moyen. Le musée de la Pêche, à l'intérieur, est fermé pour travaux jusqu'en 2027.",
+   lat:47.87296, lng:-3.91210},
+
+  {cat:"sortie", nom:"Polder de Mousterlin, sentier GR34", style:"Boucle nature à plat", avalider:true,
+   adr:"Parking du Grand Large, 50 route du Grand Large, 29170 Fouesnant",
+   note:"Marais protégé, dunes et Mer Blanche, sur une portion du GR34, avec panneaux sur la faune et la flore. Circuit balisé d'environ 11 km pour 3h15, qui se coupe facilement en version courte le long du polder avec de jeunes enfants. Attention, le numéro 48 de la même rue est un camping.",
+   lat:47.84864, lng:-4.03689}
 ];
 
 /* ----- carte ----- */
@@ -1670,7 +1732,7 @@ function lienTripadvisor(l){
 LIEUX.forEach(l => {
   const icon = L.divIcon({
     className:"",
-    html:'<div class="pin" style="background:'+COUL[l.cat]+'"><i>'+EMOJ[l.cat]+'</i></div>',
+    html:'<div class="pin'+(l.avalider?" avalider":"")+'" style="background:'+COUL[l.cat]+'"><i>'+EMOJ[l.cat]+'</i></div>',
     iconSize:[32,32], iconAnchor:[16,30], popupAnchor:[0,-28]
   });
   l.marker = L.marker([l.lat, l.lng], {icon}).addTo(map);
@@ -1678,6 +1740,7 @@ LIEUX.forEach(l => {
 
 function contenuBulle(l){
   let html = "<b>"+l.nom+"</b><br>"+l.style;
+  if(l.avalider) html += ' <span class="neuf">à valider</span>';
   html += '<br><span class="pop-adr">'+l.adr+"</span>";
   const tr = trajets(l);
   if(tr.length) html += '<br><span class="pop-dist">'+tr.join("&nbsp;&nbsp;")+"</span>";
@@ -1698,7 +1761,9 @@ function fermerBulle(){ map.closePopup(); }
 
 LIEUX.forEach(l => l.marker.bindPopup(contenuBulle(l)));
 
-const groupe = L.featureGroup(LIEUX.filter(l => l.cat !== "sortie").map(l => l.marker));
+/* le cadrage d'ouverture ignore les propositions : sinon Benodet et Concarneau
+   feraient dezoomer la carte loin du sejour */
+const groupe = L.featureGroup(LIEUX.filter(l => l.cat !== "sortie" && !l.avalider).map(l => l.marker));
 map.fitBounds(groupe.getBounds().pad(0.12));
 
 /* ----- liste ----- */
@@ -1722,10 +1787,13 @@ const CATS = [
   {cle:"sortie",   titre:"Sorties",   emoji:"🎟️"}
 ];
 const fichesOuvertes = new Set();   /* noms des fiches depliees */
-const catsRepliees   = new Set();   /* categories fermees a la main */
+/* Le groupe des propositions demarre replie : le carnet valide reste en tete,
+   et les adresses non approuvees ne se melangent pas aux autres. */
+const catsRepliees   = new Set(["avalider"]);
 
 function corpsFiche(l){
   let h = '<div class="fiche">';
+  if(l.avalider) h += '<p class="avis-neuf">Proposition non approuvée. Elle ne vient pas du fichier du séjour. Son existence et son adresse postale ont été recoupées sur le web, mais ni les horaires, ni les tarifs, ni le téléphone : à vérifier avant de se déplacer.</p>';
   h += '<p class="ligne"><span class="k">📍</span><span class="v">'+l.adr+"</span></p>";
   if(l.horaires) h += '<p class="ligne"><span class="k">🕑</span><span class="v">'+l.horaires+"</span></p>";
   if(l.note) h += '<p class="ligne"><span class="k">💬</span><span class="v">'+l.note+"</span></p>";
@@ -1767,6 +1835,7 @@ function rangFiche(l){
   h += '<summary class="rang-tete">';
   h += '<span class="rang-titre"><span class="rang-nom">'+l.nom+"</span>";
   h += '<span class="rang-style">'+l.style+"</span></span>";
+  if(l.avalider) h += '<span class="neuf">à valider</span>';
   if(court) h += '<span class="rang-trajet">'+court+"</span>";
   h += "</summary>";
   h += corpsFiche(l);
@@ -1817,7 +1886,7 @@ function rendu(){
         '<ul class="rangs">' + filtres.map(rangFiche).join("") + "</ul></div></li>";
   } else {
     CATS.forEach(c => {
-      const lot = filtres.filter(l => l.cat === c.cle);
+      const lot = filtres.filter(l => l.cat === c.cle && !l.avalider);
       if(!lot.length) return;
       const ouvert = !catsRepliees.has(c.cle);
       h += '<li class="groupe" style="--cat:'+COUL[c.cle]+'"><details class="groupe-bloc" data-cat="'+c.cle+'"'+(ouvert?" open":"")+">";
@@ -1826,6 +1895,16 @@ function rendu(){
       h += '<ul class="rangs">'+lot.map(rangFiche).join("")+"</ul>";
       h += "</details></li>";
     });
+    /* les propositions forment leur propre groupe, quelle que soit leur categorie */
+    const aValider = filtres.filter(l => l.avalider);
+    if(aValider.length){
+      const ouvert = !catsRepliees.has("avalider");
+      h += '<li class="groupe" style="--cat:#C08A2E"><details class="groupe-bloc" data-cat="avalider"'+(ouvert?" open":"")+">";
+      h += '<summary class="groupe-tete"><i class="chevron"></i>⏳ Non approuvées'+
+           '<span class="groupe-nb">'+aValider.length+"</span></summary>";
+      h += '<ul class="rangs">'+aValider.map(rangFiche).join("")+"</ul>";
+      h += "</details></li>";
+    }
   }
   liste.innerHTML = h;
 
