@@ -1,7 +1,7 @@
 /* Service worker du carnet Beg Meil.
    Incremente VERSION a chaque deploiement : l'ancienne coquille est alors
    purgee et les appareils recuperent la nouvelle version au lancement suivant. */
-const VERSION = "v12";
+const VERSION = "v13";
 const COQUILLE = "carnet-" + VERSION;
 /* Volontairement hors du versionnement. Les tuiles ne sont pas du code, ce sont
    des donnees couteuses a reconstituer : les purger a chaque publication vidait
@@ -63,7 +63,9 @@ self.addEventListener("fetch", e => {
 
   /* Le routage et le geocodage doivent toujours partir du reseau : une reponse
      en cache serait fausse des que le point de depart change. */
-  if(/router\.project-osrm\.org|routing\.openstreetmap\.de|valhalla1\.openstreetmap\.de|nominatim\.openstreetmap\.org/.test(url.hostname)){
+  /* open-meteo est dans la liste pour la meme raison : un indice UV resservi
+     depuis le cache d'avant-hier serait pire que pas d'indice du tout. */
+  if(/router\.project-osrm\.org|routing\.openstreetmap\.de|valhalla1\.openstreetmap\.de|nominatim\.openstreetmap\.org|api\.open-meteo\.com/.test(url.hostname)){
     return;
   }
 

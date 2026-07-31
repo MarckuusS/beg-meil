@@ -2111,6 +2111,64 @@ const catsRepliees   = new Set(
       .concat(CATS.map(c => "avalider:" + c.cle))
 );
 
+/* ---------- Indice UV ----------
+   Une seule valeur pour tout le secteur : l'UV ne varie pas de façon utile sur
+   30 km, afficher un chiffre différent par plage serait de la fausse précision.
+   Relevé une fois par jour, daté et gardé dans le navigateur : relevé le matin
+   sur le wifi, il reste lisible à la plage sans réseau. Faute de relevé, on
+   retombe sur le repère saisonnier, qui suffit à décider de la crème. */
+const CLE_UV = "carnet-beg-meil-uv";
+const UV_LAT = 47.8583, UV_LNG = -3.9836;   /* Beg Meil */
+let uvJour = null;
+
+function dateDuJour(){
+  return new Intl.DateTimeFormat("fr-CA", {timeZone:"Europe/Paris"}).format(new Date());
+}
+
+/* seuils de l'Organisation mondiale de la santé */
+function bandeUV(v){
+  if(v < 3)  return {mot:"faible",    conseil:"pas de protection particulière"};
+  if(v < 6)  return {mot:"modéré",    conseil:"chapeau et crème aux heures chaudes"};
+  if(v < 8)  return {mot:"fort",      conseil:"crème, chapeau et ombre entre 12h et 16h"};
+  if(v < 11) return {mot:"très fort", conseil:"évitez le plein soleil entre 12h et 16h"};
+  return {mot:"extrême", conseil:"restez à l'ombre, protection indispensable"};
+}
+
+function ligneUV(){
+  if(uvJour && uvJour.max != null){
+    const v = Math.round(uvJour.max);
+    const b = bandeUV(v);
+    /* le maximum du jour reste vrai toute la journee, la valeur instantanee non :
+       relevee a 11h elle serait fausse a 19h. On ne la montre que fraiche. */
+    const frais = uvJour.t && (Date.now() - uvJour.t) < 90 * 60 * 1000;
+    return "UV " + v + " au maximum aujourd'hui, " + b.mot + " : " + b.conseil + "." +
+           (uvJour.actuel != null && frais ? " Actuellement " + Math.round(uvJour.actuel) + "." : "");
+  }
+  return "En août sur cette côte l'indice UV monte à 7 ou 8 en milieu de journée : " +
+         "crème, chapeau et ombre entre 12h et 16h.";
+}
+
+function chargerUV(){
+  try{
+    const v = JSON.parse(localStorage.getItem(CLE_UV) || "null");
+    if(v && v.date === dateDuJour()) uvJour = v;
+  }catch(e){}
+  /* on rafraichit quand meme : l'UV du matin n'est pas celui de l'apres-midi */
+  if(navigator.onLine === false) return;
+  fetch("https://api.open-meteo.com/v1/forecast?latitude=" + UV_LAT + "&longitude=" + UV_LNG +
+        "&daily=uv_index_max&current=uv_index&timezone=Europe%2FParis&forecast_days=1")
+    .then(r => r.json())
+    .then(d => {
+      const max = d && d.daily && d.daily.uv_index_max && d.daily.uv_index_max[0];
+      if(max == null) return;
+      uvJour = {date: dateDuJour(), max: max,
+                actuel: d.current ? d.current.uv_index : null, t: Date.now()};
+      try{ localStorage.setItem(CLE_UV, JSON.stringify(uvJour)); }catch(e){}
+      rendu();
+    })
+    .catch(() => {});
+}
+
 /* ---------- Marées et plages ----------
    Les deux sections vivaient côte à côte sans se parler. Or la marée décide de
    l'heure à laquelle une plage est praticable, et sept d'entre elles changent
@@ -2147,6 +2205,7 @@ function corpsFiche(l){
     if(lm || bouge)
       h += '<p class="ligne"><span class="k">🌊</span><span class="v">'+
            [lm, bouge].filter(Boolean).join(" ")+"</span></p>";
+    h += '<p class="ligne"><span class="k">☀️</span><span class="v">'+ligneUV()+"</span></p>";
   }
   if(l.tel){
     const brut = "+33"+l.tel.replace(/-/g,"").slice(1);
@@ -2471,6 +2530,7 @@ rendreMarees();
 setInterval(rendreMarees, 60000);
 
 rendu();
+chargerUV();
 
 /* Mise en cache pour l'usage hors reseau. Sans effet si la page est ouverte
    en file:// ou dans un cadre imbrique, l'application marche alors normalement.
