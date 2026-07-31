@@ -996,6 +996,45 @@ svg.leaflet-image-layer.leaflet-interactive path {
     border:1px solid var(--trait);cursor:pointer;color:inherit;
   }
   .coefcell u{display:block;text-decoration:none;font-size:11px;color:var(--encre-2);line-height:1.4}
+  /* ---------- historique du sejour ---------- */
+  .qui-bloc{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 16px}
+  .qui-bloc label{font-size:13px;color:var(--encre-2)}
+  .qui-bloc input{
+    flex:1 1 150px;min-width:0;min-height:44px;border:1px solid var(--trait);border-radius:10px;
+    background:var(--carte);padding:9px 12px;font-size:16px;font-family:inherit;color:var(--encre);
+  }
+  .histo-jour{margin:0 0 16px}
+  .histo-date{
+    font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--encre-2);margin:0 0 7px;
+  }
+  .histo-liste{list-style:none;margin:0;padding:0}
+  .histo-item{
+    display:flex;align-items:center;gap:10px;background:var(--carte);
+    border:1px solid var(--trait);border-left:5px solid var(--cat);border-radius:10px;
+    padding:7px 10px;margin-bottom:6px;min-height:44px;
+  }
+  /* champ natif : un appui ouvre le selecteur d'heure du telephone */
+  .histo-heure{
+    flex:none;width:84px;min-height:44px;font-family:var(--mono);font-size:14px;
+    border:1px solid transparent;border-radius:8px;background:var(--fond);
+    color:var(--encre);padding:4px 6px;
+  }
+  .histo-heure:focus{border-color:var(--trait)}
+  .histo-nom{flex:1;min-width:0;font-family:var(--display);font-weight:700;font-size:16px;line-height:1.2}
+  .histo-par{
+    flex:none;font-family:var(--mono);font-size:11px;color:var(--encre-2);
+    background:var(--fond);border-radius:999px;padding:3px 8px;
+  }
+  .histo-oter{
+    flex:none;min-width:44px;min-height:44px;border:0;background:none;cursor:pointer;
+    color:var(--encre-2);font-size:20px;line-height:1;font-family:inherit;
+  }
+  .histo-vide{color:var(--encre-2);font-size:14px}
+  .histo-sansdate{
+    margin-top:4px;padding:9px 11px;background:var(--fond);border:1px solid var(--trait);
+    border-radius:8px;font-size:13px;color:var(--encre-2);line-height:1.5;
+  }
   .jour-peche{
     margin:0 0 10px;padding:8px 10px;background:rgba(15,122,107,.10);
     border:1px solid rgba(15,122,107,.35);border-radius:8px;
@@ -1121,6 +1160,16 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <div class="coefs" id="coefs"></div>
     <div id="detail"></div>
     <p class="src">Prédictions SHOM, tout le mois d'août 2026. Les coefficients ont été recoupés avec la capture de ton fichier.</p>
+  </section>
+
+  <section class="bloc">
+    <h2>Historique du séjour</h2>
+    <p>Ce que vous avez fait, dans l'ordre. Une adresse s'inscrit ici dès que vous la marquez comme faite depuis sa fiche. L'heure se corrige d'un appui, on coche souvent le soir pour une sortie du matin.</p>
+    <div class="qui-bloc">
+      <label for="qui">Qui utilise ce téléphone</label>
+      <input id="qui" type="text" autocomplete="off" placeholder="Ton prénom" maxlength="20">
+    </div>
+    <div id="historique"></div>
   </section>
 
   <footer>
@@ -2053,43 +2102,170 @@ function eloignement(l){
   return m == null ? Infinity : m;
 }
 
-/* ---------- Deja fait ----------
-   55 adresses et deux ou trois semaines sur place : sans marqueur on perd vite
-   le fil de ce qu'on a essaye. Range dans le navigateur, comme la location :
-   rien n'est envoye, rien n'est ecrit dans le fichier publie. */
-const CLE_FAITS = "carnet-beg-meil-faits";
+/* ---------- Visites ----------
+   Chaque visite porte sa date, son auteur et l'instant de sa derniere
+   modification. L'horodatage sert deux choses : l'historique du sejour, et plus
+   tard l'arbitrage entre appareils, ou c'est la modification la plus recente
+   qui gagne. Une visite annulee n'est pas effacee mais marquee supprimee, sinon
+   l'effacement ne pourrait pas se propager aux autres telephones.
+   Ecrit dans le navigateur : rien n'est publie dans le fichier. */
+const CLE_VISITES = "carnet-beg-meil-visites";
+const CLE_QUI = "carnet-beg-meil-qui";
 
-function lireFaits(){
-  try{
-    const v = JSON.parse(localStorage.getItem(CLE_FAITS) || "[]");
-    return new Set(Array.isArray(v) ? v : []);
-  }catch(e){ return new Set(); }
-}
-const faits = lireFaits();
+let visites = {};
 let masquerFaits = false;
+let moiQui = "";
 
-function ecrireFaits(){
-  try{ localStorage.setItem(CLE_FAITS, JSON.stringify([...faits])); return true; }
+function lireVisites(){
+  try{
+    const v = JSON.parse(localStorage.getItem(CLE_VISITES) || "null");
+    if(v && typeof v === "object" && !Array.isArray(v)) return v;
+  }catch(e){}
+  /* reprise de l'ancien format, une simple liste de noms sans date */
+  try{
+    const vieux = JSON.parse(localStorage.getItem("carnet-beg-meil-faits") || "[]");
+    if(Array.isArray(vieux) && vieux.length){
+      const o = {};
+      vieux.forEach(n => { o[n] = {le: null, par: "", maj: new Date().toISOString(), supprime: false}; });
+      return o;
+    }
+  }catch(e){}
+  return {};
+}
+
+visites = lireVisites();
+try{ moiQui = localStorage.getItem(CLE_QUI) || ""; }catch(e){}
+
+function ecrireVisites(){
+  try{ localStorage.setItem(CLE_VISITES, JSON.stringify(visites)); return true; }
   catch(e){ return false; }
+}
+
+function estFait(nom){
+  const v = visites[nom];
+  return !!(v && !v.supprime);
+}
+
+function nbFaits(){
+  return Object.keys(visites).filter(n => !visites[n].supprime).length;
+}
+
+/* Chronologie du sejour : les visites datees, de la plus recente a la plus
+   ancienne. Les visites reprises de l'ancien format n'ont pas de date, elles
+   sont regroupees a part plutot que placees au hasard. */
+function chronologie(){
+  return Object.keys(visites)
+    .filter(n => !visites[n].supprime && visites[n].le)
+    .map(n => ({nom: n, le: visites[n].le, par: visites[n].par || ""}))
+    .sort((a, b) => (a.le < b.le ? 1 : -1));
+}
+
+function sansDate(){
+  return Object.keys(visites).filter(n => !visites[n].supprime && !visites[n].le);
 }
 
 function majBoutonFaits(){
   const b = document.getElementById("bascule-faits");
   const n = document.getElementById("nb-faits");
-  if(n) n.textContent = faits.size;
+  const total = nbFaits();
+  if(n) n.textContent = total;
   if(b){
     b.setAttribute("aria-pressed", masquerFaits ? "true" : "false");
     b.setAttribute("aria-label", masquerFaits
       ? "Afficher de nouveau les adresses déjà faites"
-      : "Masquer les " + faits.size + " adresses déjà faites");
+      : "Masquer les " + total + " adresses déjà faites");
   }
 }
 
 function basculerFait(nom){
-  if(faits.has(nom)) faits.delete(nom); else faits.add(nom);
-  ecrireFaits();
+  const maintenant = new Date().toISOString();
+  if(estFait(nom)){
+    visites[nom] = Object.assign({}, visites[nom], {supprime: true, maj: maintenant});
+  } else {
+    visites[nom] = {le: maintenant, par: moiQui, maj: maintenant, supprime: false};
+  }
+  ecrireVisites();
   majBoutonFaits();
   rendu();
+  rendreHistorique();
+}
+
+/* Corriger l'heure : on coche souvent le soir pour une visite du matin. */
+function daterVisite(nom, iso){
+  if(!visites[nom] || visites[nom].supprime) return;
+  visites[nom].le = iso;
+  visites[nom].maj = new Date().toISOString();
+  ecrireVisites();
+  rendu();
+  rendreHistorique();
+}
+
+/* La journee se calcule en heure de Paris, pas en UTC : une visite de 23h30
+   serait sinon rangee au lendemain. */
+function dateParis(iso){
+  return new Intl.DateTimeFormat("fr-CA", {timeZone:"Europe/Paris"}).format(new Date(iso));
+}
+function libelleJour(aaaammjj){
+  const t = new Intl.DateTimeFormat("fr-FR",
+    {weekday:"long", day:"numeric", month:"long", timeZone:"Europe/Paris"})
+    .format(new Date(aaaammjj + "T12:00:00+02:00"));
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+function heureChamp(iso){
+  return new Intl.DateTimeFormat("fr-FR",
+    {hour:"2-digit", minute:"2-digit", hour12:false, timeZone:"Europe/Paris"})
+    .format(new Date(iso));
+}
+
+function rendreHistorique(){
+  const box = document.getElementById("historique");
+  if(!box) return;
+  const items = chronologie(), orphelins = sansDate();
+
+  if(!items.length && !orphelins.length){
+    box.innerHTML = '<p class="histo-vide">Rien encore. Marquez une adresse comme faite depuis sa fiche, elle s\'inscrira ici.</p>';
+    return;
+  }
+
+  const parJour = {};
+  items.forEach(v => { const j = dateParis(v.le); (parJour[j] = parJour[j] || []).push(v); });
+
+  let h = "";
+  Object.keys(parJour).sort().reverse().forEach(j => {
+    h += '<div class="histo-jour"><p class="histo-date">' + libelleJour(j) + '</p><ul class="histo-liste">';
+    parJour[j].forEach(v => {
+      const l = LIEUX.find(x => x.nom === v.nom);
+      h += '<li class="histo-item" style="--cat:' + (l ? COUL[l.cat] : "#3D5A63") + '">';
+      h += '<input class="histo-heure" type="time" value="' + heureChamp(v.le) +
+           '" data-nom="' + esc(v.nom) + '" aria-label="Heure de ' + esc(v.nom) + '">';
+      h += '<span class="histo-nom">' + v.nom + '</span>';
+      if(v.par) h += '<span class="histo-par">' + esc(v.par) + '</span>';
+      h += '<button type="button" class="histo-oter" data-nom="' + esc(v.nom) +
+           '" aria-label="Retirer ' + esc(v.nom) + '">×</button>';
+      h += '</li>';
+    });
+    h += '</ul></div>';
+  });
+
+  if(orphelins.length)
+    h += '<p class="histo-sansdate">' + orphelins.length +
+         (orphelins.length > 1 ? " adresses marquées" : " adresse marquée") +
+         " avant la mise en place de l'historique, donc sans heure : " +
+         orphelins.map(esc).join(", ") + ".</p>";
+
+  box.innerHTML = h;
+
+  box.querySelectorAll(".histo-heure").forEach(i => {
+    i.addEventListener("change", () => {
+      const v = visites[i.dataset.nom];
+      if(!v || !v.le || !i.value) return;
+      /* on ne deplace que l'heure, la journee de la visite ne bouge pas */
+      daterVisite(i.dataset.nom,
+        new Date(dateParis(v.le) + "T" + i.value + ":00+02:00").toISOString());
+    });
+  });
+  box.querySelectorAll(".histo-oter").forEach(b =>
+    b.addEventListener("click", () => basculerFait(b.dataset.nom)));
 }
 
 /* Le carnet tient en 4 categories : on affiche le sommaire, et le detail ne se
@@ -2225,8 +2401,8 @@ function corpsFiche(l){
   h += '<a class="btn gmaps" href="'+lienGoogle(l)+'" target="_blank" rel="noopener">'+ico("pin")+'Google Maps</a>';
   h += '<a class="btn waze" href="'+lienWaze(l)+'" target="_blank" rel="noopener">'+ico("fleche")+'Waze</a>';
   h += "</div>";
-  h += '<div class="actions"><button type="button" class="btn btn-fait'+(faits.has(l.nom)?" actif":"")+'">'+
-       (faits.has(l.nom) ? "✓ Déjà fait" : "Marquer comme fait")+"</button></div>";
+  h += '<div class="actions"><button type="button" class="btn btn-fait'+(estFait(l.nom)?" actif":"")+'">'+
+       (estFait(l.nom) ? "✓ Déjà fait" : "Marquer comme fait")+"</button></div>";
   h += "</div>";
   return h;
 }
@@ -2243,7 +2419,7 @@ function trajetCourt(l){
 
 function rangFiche(l){
   const court = trajetCourt(l);
-  const fait = faits.has(l.nom);
+  const fait = estFait(l.nom);
   let h = '<li class="rang'+(fait?" fait":"")+'" style="--cat:'+COUL[l.cat]+'">';
   h += '<details data-nom="'+l.nom.replace(/"/g,"&quot;")+'"'+(fichesOuvertes.has(l.nom)?" open":"")+">";
   h += '<summary class="rang-tete">';
@@ -2274,7 +2450,7 @@ function rendu(){
   memoriserOuvertures();
   const filtres = LIEUX.filter(l => {
     if(catActive !== "tout" && l.cat !== catActive) return false;
-    if(masquerFaits && faits.has(l.nom)) return false;
+    if(masquerFaits && estFait(l.nom)) return false;
     if(!recherche) return true;
     const t = sansAccent([l.nom, l.style, l.adr, l.horaires, l.note].join(" "));
     return t.includes(recherche);
@@ -2378,6 +2554,17 @@ document.getElementById("bascule-faits").addEventListener("click", () => {
   rendu();
 });
 majBoutonFaits();
+
+/* Le prénom ne sert qu'à savoir qui a coché quoi. Il reste sur l'appareil
+   tant qu'il n'y a pas de synchronisation. */
+const champQui = document.getElementById("qui");
+champQui.value = moiQui;
+champQui.addEventListener("input", e => {
+  moiQui = e.target.value.trim().slice(0, 20);
+  try{ localStorage.setItem(CLE_QUI, moiQui); }catch(err){}
+});
+
+rendreHistorique();
 
 /* ----- marees : aout 2026, port de Concarneau (predictions SHOM) ----- */
 const MAREES_AOUT = [
