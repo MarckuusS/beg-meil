@@ -1284,6 +1284,17 @@ const LIEUX = [
    ta:"https://www.tripadvisor.fr/Restaurant_Review-g666452-d33419964-Reviews-Le_Petit_Iode_Fouesnant-Fouesnant_Finistere_Brittany.html",
    lat:47.8904, lng:-4.0087},
 
+  {cat:"resto", nom:"Les Viviers de La Forêt", style:"Crustacés au bord de l'eau",
+   adr:"Le Vieux Port, 11 Kerist, 29940 La Forêt-Fouesnant",
+   tel:"02-98-56-96-68",
+   note:"Vivier familial depuis 1948, au bout du vieux port, face au port de plaisance. Dégustation de crustacés en terrasse d'avril à septembre, sur réservation. Attention à ne pas confondre avec Aux Viviers de Penfoulic, également au carnet : ce sont deux maisons distinctes, à deux endroits de la commune, avec deux téléphones différents.",
+   lat:47.89845, lng:-3.98089},
+
+  {cat:"resto", nom:"Crêperie Ty Coz", style:"Crêperie, Locronan",
+   adr:"Place de l'Église, 29180 Locronan",
+   note:"Institution familiale depuis 1952, dans une ancienne demeure Renaissance directement sur la place de l'église. Deux salles et une terrasse, service continu, pratique quand on arrive décalé après la visite du village.",
+   lat:48.09829, lng:-4.20859},
+
   {cat:"commerce", nom:"Leclerc", style:"Hypermarché",
    adr:"ZAC de Penhoat Salaun, 29170 Pleuven",
    horaires:"Du lundi au samedi 8h30-20h, dimanche 9h-12h30",
@@ -1302,6 +1313,11 @@ const LIEUX = [
    horaires:"Fermé le lundi. Du lundi au samedi 7h15-19h30, dimanche 7h30-13h",
    tel:"02-98-56-06-93",
    lat:47.8940, lng:-4.0110},
+
+  {cat:"commerce", nom:"Au Loup Garou Gourmand", style:"Bières bretonnes, épicerie fine",
+   adr:"1 Place de l'Église, 29180 Locronan",
+   note:"Sa dénomination officielle est Maison des Bières Bretonnes. Épicerie fine sur la grande place, de cent à près de deux cents références de bières et cidres bretons, plus des spiritueux. À faire en sortant de la cité, elle est à quelques pas de la crêperie.",
+   lat:48.09856, lng:-4.20864},
 
   {cat:"plage", nom:"Plage de Bot Conan", style:"Petite plage avec rochers",
    adr:"Bot Conan, Lantecoste, 29170 Fouesnant",
@@ -1328,15 +1344,25 @@ const LIEUX = [
   {cat:"sortie", nom:"Haliotika, visite de la criée", style:"Visite guidée, criée, dégustation de langoustines",
    adr:"Le Port, terrasse panoramique, 29730 Le Guilvinec",
    horaires:"2h30, 22,50 € par personne",
-   note:"Terrasse panoramique sur le port du Guilvinec",
+   note:"Terrasse panoramique sur le port du Guilvinec. Réserver à l'avance, les places d'août sont prises tôt.",
    ta:"https://www.tripadvisor.fr/Attraction_Review-g735265-d2250489-Reviews-Haliotika_La_Cite_de_la_Peche-Guilvinec_Finistere_Brittany.html",
    lat:47.7942, lng:-4.2795},
 
   {cat:"sortie", nom:"Chasse aux Kuriosités, visite de Quimper", style:"Chasse au trésor pour visiter la ville",
    adr:"Place Saint-Corentin, 29000 Quimper",
    horaires:"1h30, les mardis 11 ou 18/08 à 10h30, 9 € par personne",
-   note:"Rendez-vous devant l'entrée de la cathédrale",
+   note:"Rendez-vous devant l'entrée de la cathédrale. Organisée par Les Archi Kurieux, qui proposent au même point de départ un second parcours, le jeu de piste La Forteresse Oubliée : 2h à 2h30, à partir de 8 ans, plus corsé. Réserver à l'avance, les créneaux d'août partent vite.",
    lat:47.99558, lng:-4.10235},
+
+  {cat:"sortie", nom:"Centre nautique du Cap Coz", style:"Kayak de mer et nautisme",
+   adr:"1 chemin de Kersentic, Cap-Coz, 29170 Fouesnant",
+   note:"Kayak de mer, stand-up paddle, planche à voile, catamaran et dériveur, en location ou en cours, avec des formules famille et un accueil des enfants dès 4 ans. Base de trois hectares au bord de la plage du Cap Coz. Réserver à l'avance en août.",
+   lat:47.88702, lng:-3.98902},
+
+  {cat:"sortie", nom:"Locronan, cité médiévale", style:"Village classé, place Renaissance",
+   adr:"Place de l'Église, 29180 Locronan",
+   note:"Grande place pavée bordée de demeures Renaissance en granit, église Saint-Ronan du XVe siècle et chapelle du Penity, ateliers d'artisans dans les ruelles. Le centre est piétonnier : se garer aux parkings d'entrée de village, payants au forfait journée en haute saison. En août, arriver tôt le matin est le seul vrai levier, les parkings saturent en milieu de journée. La crêperie Ty Coz et la maison des bières bretonnes sont sur la même place.",
+   lat:48.09842, lng:-4.20840},
 
   /* ---------- Propositions de Claude, pas encore approuvées ----------
      Ces adresses ne viennent pas du fichier BEG_MEIL_2026 : elles ont été
@@ -1520,11 +1546,6 @@ const LIEUX = [
    adr:"51 allée de Loc'Hilaire, 29170 Fouesnant",
    note:"Piscine de loisirs au bourg de Fouesnant, à moins de dix minutes de Beg Meil. Eau à 29 degrés, toboggan, pataugeoire, jeux d'eau et espace détente. La solution de repli les jours où la pluie ou le vent d'ouest rend les plages impraticables.",
    lat:47.89237, lng:-4.00556},
-
-  {cat:"sortie", nom:"Centre nautique du Cap Coz", style:"Location et cours de nautisme", avalider:true,
-   adr:"1 chemin de Kersentic, Cap-Coz, 29170 Fouesnant",
-   note:"Base nautique de trois hectares au bord de la plage du Cap Coz. Location et cours de kayak de mer, stand-up paddle, planche à voile, catamaran et dériveur, avec des formules famille et un accueil des enfants dès 4 ans.",
-   lat:47.88702, lng:-3.98902},
 
   {cat:"sortie", nom:"Glaz Aventures", style:"Accrobranche et paintball", avalider:true,
    adr:"Hent Kastell, 29950 Clohars-Fouesnant",
