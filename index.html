@@ -2448,21 +2448,52 @@ let visites = {};
 let masquerFaits = false;
 let moiQui = "";
 
+/* Identifiant unique par visite. Indispensable depuis qu'une même adresse peut
+   être visitée plusieurs fois : sur une semaine on retourne à la même plage
+   tous les jours, et la clé par nom n'en gardait qu'une seule. */
+function idVisite(){
+  return "v-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7);
+}
+
 function lireVisites(){
-  try{
-    const v = JSON.parse(localStorage.getItem(CLE_VISITES) || "null");
-    if(v && typeof v === "object" && !Array.isArray(v)) return v;
-  }catch(e){}
-  /* reprise de l'ancien format, une simple liste de noms sans date */
+  let v = null;
+  try{ v = JSON.parse(localStorage.getItem(CLE_VISITES) || "null"); }catch(e){}
+  if(v && typeof v === "object" && !Array.isArray(v)){
+    /* format par nom de lieu : conversion vers une entrée par visite */
+    const cles = Object.keys(v);
+    if(cles.length && !v[cles[0]].lieu){
+      const o = {};
+      cles.forEach(nom => { o[idVisite()] = Object.assign({}, v[nom], {lieu: nom}); });
+      return o;
+    }
+    return v;
+  }
+  /* format le plus ancien : une simple liste de noms, sans date */
   try{
     const vieux = JSON.parse(localStorage.getItem("carnet-beg-meil-faits") || "[]");
     if(Array.isArray(vieux) && vieux.length){
       const o = {};
-      vieux.forEach(n => { o[n] = {le: null, par: "", maj: new Date().toISOString(), supprime: false}; });
+      vieux.forEach(n => {
+        o[idVisite()] = {lieu: n, le: null, par: "", maj: new Date().toISOString(), supprime: false};
+      });
       return o;
     }
   }catch(e){}
   return {};
+}
+
+/* Les visites actives d'une adresse, de la plus récente à la plus ancienne. */
+function visitesDe(nom){
+  return Object.keys(visites)
+    .filter(k => visites[k] && !visites[k].supprime && visites[k].lieu === nom)
+    .sort((a, b) => (visites[a].le < visites[b].le ? 1 : -1));
+}
+
+/* Celle d'aujourd'hui, s'il y en a une : c'est elle que le bouton retire quand
+   on s'est trompé, plutôt que d'effacer tout l'historique du lieu. */
+function visiteDuJour(nom){
+  const auj = dateDuJour();
+  return visitesDe(nom).find(k => visites[k].le && dateParis(visites[k].le) === auj) || null;
 }
 
 visites = lireVisites();
@@ -2474,12 +2505,18 @@ function ecrireVisites(){
 }
 
 function estFait(nom){
-  const v = visites[nom];
-  return !!(v && !v.supprime);
+  return visitesDe(nom).length > 0;
 }
 
+/* on compte les ADRESSES faites, pas les passages : c'est ce que le filtre
+   "masquer ce qui est fait" retire de la liste */
 function nbFaits(){
-  return Object.keys(visites).filter(n => !visites[n].supprime).length;
+  const vus = {};
+  Object.keys(visites).forEach(k => {
+    const v = visites[k];
+    if(v && !v.supprime && v.lieu) vus[v.lieu] = 1;
+  });
+  return Object.keys(vus).length;
 }
 
 /* Chronologie du sejour : les visites datees, de la plus recente a la plus
@@ -2487,13 +2524,15 @@ function nbFaits(){
    sont regroupees a part plutot que placees au hasard. */
 function chronologie(){
   return Object.keys(visites)
-    .filter(n => !visites[n].supprime && visites[n].le)
-    .map(n => ({nom: n, le: visites[n].le, par: visites[n].par || ""}))
+    .filter(k => visites[k] && !visites[k].supprime && visites[k].le)
+    .map(k => ({id: k, nom: visites[k].lieu, le: visites[k].le, par: visites[k].par || ""}))
     .sort((a, b) => (a.le < b.le ? 1 : -1));
 }
 
 function sansDate(){
-  return Object.keys(visites).filter(n => !visites[n].supprime && !visites[n].le);
+  return Object.keys(visites)
+    .filter(k => visites[k] && !visites[k].supprime && !visites[k].le)
+    .map(k => visites[k].lieu);
 }
 
 function majBoutonFaits(){
@@ -2509,12 +2548,18 @@ function majBoutonFaits(){
   }
 }
 
+/* Un appui dit "on y est allé aujourd'hui". Un second appui le même jour annule
+   la faute de frappe. Un appui un autre jour ajoute un nouveau passage : sur une
+   semaine on retourne à la même plage plusieurs fois, et chaque fois compte. */
 function basculerFait(nom){
   const maintenant = new Date().toISOString();
-  if(estFait(nom)){
-    visites[nom] = Object.assign({}, visites[nom], {supprime: true, maj: maintenant});
+  const aujourdhui = visiteDuJour(nom);
+  if(aujourdhui){
+    visites[aujourdhui] = Object.assign({}, visites[aujourdhui],
+      {supprime: true, maj: maintenant});
   } else {
-    visites[nom] = {le: maintenant, par: moiQui, maj: maintenant, supprime: false};
+    visites[idVisite()] = {lieu: nom, le: maintenant, par: moiQui,
+                           maj: maintenant, supprime: false};
   }
   ecrireVisites();
   majBoutonFaits();
@@ -2523,11 +2568,23 @@ function basculerFait(nom){
   pousserSync();
 }
 
+/* Retirer un passage précis depuis l'historique, sans toucher aux autres. */
+function oterVisite(id){
+  if(!visites[id]) return;
+  visites[id] = Object.assign({}, visites[id],
+    {supprime: true, maj: new Date().toISOString()});
+  ecrireVisites();
+  majBoutonFaits();
+  rendu();
+  rendreHistorique();
+  pousserSync();
+}
+
 /* Corriger l'heure : on coche souvent le soir pour une visite du matin. */
-function daterVisite(nom, iso){
-  if(!visites[nom] || visites[nom].supprime) return;
-  visites[nom].le = iso;
-  visites[nom].maj = new Date().toISOString();
+function daterVisite(id, iso){
+  if(!visites[id] || visites[id].supprime) return;
+  visites[id].le = iso;
+  visites[id].maj = new Date().toISOString();
   ecrireVisites();
   rendu();
   rendreHistorique();
@@ -2537,13 +2594,12 @@ function daterVisite(nom, iso){
 /* Corriger l'activité : on s'est trompé de fiche en cochant. L'ancienne visite
    est marquée supprimée plutôt qu'effacée, comme partout ailleurs, et la
    nouvelle reprend son horodatage et sa signature. */
-function changerLieuVisite(ancien, nouveau){
-  if(!nouveau || nouveau === ancien) return;
-  const v = visites[ancien];
-  if(!v) return;
-  const maintenant = new Date().toISOString();
-  visites[ancien] = Object.assign({}, v, {supprime:true, maj:maintenant});
-  visites[nouveau] = {le: v.le, par: v.par || "", maj: maintenant, supprime:false};
+function changerLieuVisite(id, nouveau){
+  const v = visites[id];
+  if(!v || !nouveau || nouveau === v.lieu) return;
+  /* la visite garde son identifiant, son horodatage et sa signature : seul le
+     lieu change. C'est devenu trivial depuis que la clé n'est plus le nom. */
+  visites[id] = Object.assign({}, v, {lieu: nouveau, maj: new Date().toISOString()});
   ecrireVisites();
   majBoutonFaits();
   rendu();
@@ -2588,13 +2644,13 @@ function rendreHistorique(){
       const l = LIEUX.find(x => x.nom === v.nom);
       h += '<li class="histo-item" style="--cat:' + (l ? COUL[l.cat] : "#3D5A63") + '">';
       h += '<input class="histo-date-champ" type="date" value="' + dateParis(v.le) +
-           '" data-nom="' + esc(v.nom) + '" aria-label="Date de ' + esc(v.nom) + '">';
+           '" data-id="' + v.id + '" aria-label="Date de ' + esc(v.nom) + '">';
       h += '<input class="histo-heure" type="time" value="' + heureChamp(v.le) +
-           '" data-nom="' + esc(v.nom) + '" aria-label="Heure de ' + esc(v.nom) + '">';
+           '" data-id="' + v.id + '" aria-label="Heure de ' + esc(v.nom) + '">';
       if(v.par) h += '<span class="histo-par">' + esc(v.par) + '</span>';
-      h += '<select class="histo-lieu" data-nom="' + esc(v.nom) +
+      h += '<select class="histo-lieu" data-id="' + v.id +
            '" aria-label="Activité réalisée">' + optionsAdresses([], v.nom) + '</select>';
-      h += '<button type="button" class="histo-oter" data-nom="' + esc(v.nom) +
+      h += '<button type="button" class="histo-oter" data-id="' + v.id +
            '" aria-label="Retirer ' + esc(v.nom) + '">×</button>';
       h += '</li>';
     });
@@ -2610,21 +2666,21 @@ function rendreHistorique(){
   box.innerHTML = h;
 
   box.querySelectorAll(".histo-heure").forEach(i => i.addEventListener("change", () => {
-    const v = visites[i.dataset.nom];
+    const v = visites[i.dataset.id];
     if(!v || !v.le || !i.value) return;
-    daterVisite(i.dataset.nom,
+    daterVisite(i.dataset.id,
       new Date(dateParis(v.le) + "T" + i.value + ":00+02:00").toISOString());
   }));
   box.querySelectorAll(".histo-date-champ").forEach(i => i.addEventListener("change", () => {
-    const v = visites[i.dataset.nom];
+    const v = visites[i.dataset.id];
     if(!v || !v.le || !i.value) return;
-    daterVisite(i.dataset.nom,
+    daterVisite(i.dataset.id,
       new Date(i.value + "T" + heureChamp(v.le) + ":00+02:00").toISOString());
   }));
   box.querySelectorAll(".histo-lieu").forEach(s => s.addEventListener("change", () =>
-    changerLieuVisite(s.dataset.nom, s.value)));
+    changerLieuVisite(s.dataset.id, s.value)));
   box.querySelectorAll(".histo-oter").forEach(b =>
-    b.addEventListener("click", () => basculerFait(b.dataset.nom)));
+    b.addEventListener("click", () => oterVisite(b.dataset.id)));
 }
 
 /* Le carnet tient en 4 categories : on affiche le sommaire, et le detail ne se
@@ -2801,7 +2857,12 @@ function corpsFiche(l){
   h += '<a class="btn waze" href="'+lienWaze(l)+'" target="_blank" rel="noopener">'+ico("fleche")+'Waze</a>';
   h += "</div>";
   h += '<div class="actions"><button type="button" class="btn btn-fait'+(estFait(l.nom)?" actif":"")+'">'+
-       (estFait(l.nom) ? "✓ Déjà fait" : "Fait aujourd'hui")+"</button></div>";
+       (function(){
+         const n = visitesDe(l.nom).length;
+         if(!n) return "Fait aujourd'hui";
+         return visiteDuJour(l.nom) ? "✓ Fait aujourd'hui"
+              : "✓ " + n + (n > 1 ? " passages" : " passage") + ", refaire aujourd'hui";
+       })()+"</button></div>";
   h += "</div>";
   return h;
 }
