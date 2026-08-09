@@ -1029,6 +1029,43 @@ svg.leaflet-image-layer.leaflet-interactive path {
   /* de quoi ne pas cacher le pied de page sous la barre fixe */
   .wrap{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
 
+  /* ---------- ajout d'adresse et synchronisation ---------- */
+  .ajout-lieu{
+    margin:10px 12px 4px;background:var(--carte);border:1px solid var(--trait);
+    border-radius:12px;padding:0 13px;
+  }
+  .ajout-lieu summary{
+    cursor:pointer;padding:13px 0;min-height:44px;list-style:none;
+    font-family:var(--mono);font-size:12px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--encre);
+  }
+  .ajout-lieu summary::-webkit-details-marker{display:none}
+  .ajout-note{margin:0 0 10px;font-size:12px;color:var(--encre-2);line-height:1.5}
+  .ajout-champs{display:flex;flex-direction:column;gap:8px;padding-bottom:12px}
+  .ajout-champs input,.ajout-champs select{
+    min-height:44px;border:1px solid var(--trait);border-radius:10px;background:var(--fond);
+    padding:9px 11px;font-size:16px;font-family:inherit;color:var(--encre);
+  }
+  .ajout-etat{margin:0 0 12px;font-size:13px;color:var(--encre)}
+  .ajout-etat:empty{display:none}
+  /* pastille des adresses ajoutees : pleine, mais cerclee pour se distinguer */
+  .pin.ajoute{box-shadow:0 0 0 2px var(--encre),0 2px 6px rgba(14,46,56,.4)}
+  .plan-par,.histo-par{
+    flex:none;font-family:var(--mono);font-size:11px;color:var(--encre-2);
+    background:var(--fond);border-radius:999px;padding:3px 8px;
+  }
+  .sync-bloc{margin:10px 0 4px}
+  .sync-bloc summary{cursor:pointer;min-height:44px;display:flex;align-items:center;
+    font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+  .sync-bloc p{margin:0 0 10px;line-height:1.6}
+  .sync-bloc input{
+    display:block;width:100%;max-width:420px;min-height:44px;margin-bottom:8px;
+    border:1px solid var(--trait);border-radius:10px;background:var(--carte);
+    padding:9px 11px;font-size:16px;font-family:inherit;color:var(--encre);
+  }
+  #sync-etat{margin:8px 0 0;color:var(--encre)}
+  #sync-etat:empty{display:none}
+
   /* ---------- planification ---------- */
   .plan-bornes{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:12px 0 18px}
   .plan-bornes label{font-size:13px;color:var(--encre-2)}
@@ -1286,6 +1323,24 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
   <p class="compte" id="compte" role="status"></p>
   <ul class="liste" id="liste"></ul>
+
+  <details class="ajout-lieu" id="ajout-lieu">
+    <summary>➕ Ajouter une adresse au carnet</summary>
+    <p class="ajout-note">Elle rejoint le carnet comme les autres, avec ses trajets et sa place dans le plan. Ton prénom reste attaché à cet ajout.</p>
+    <div class="ajout-champs">
+      <input id="aj-nom" type="text" autocomplete="off" placeholder="Nom du lieu" maxlength="60">
+      <select id="aj-cat" aria-label="Catégorie">
+        <option value="resto">🍽️ Resto</option>
+        <option value="commerce">🛒 Commerce</option>
+        <option value="plage">🏖️ Plage</option>
+        <option value="sortie">🎟️ Sortie</option>
+      </select>
+      <input id="aj-adr" type="text" autocomplete="off" placeholder="Adresse postale" maxlength="140">
+      <input id="aj-note" type="text" autocomplete="off" placeholder="Une note, facultatif" maxlength="200">
+      <button class="btn plein" id="aj-valider" type="button">Ajouter au carnet</button>
+    </div>
+    <p class="ajout-etat" id="aj-etat" role="status"></p>
+  </details>
   </div>
 
   <div class="onglet" id="onglet-marees" hidden>
@@ -1340,6 +1395,14 @@ svg.leaflet-image-layer.leaflet-interactive path {
     Le bouton TripAdvisor n'apparait que sur les adresses qui ont une fiche vérifiée. Les plages, le Leclerc, la boulangerie et la chasse aux Kuriosités n'en ont pas.<br>
     Fond de carte et routage : OpenStreetMap. Indice UV : Open-Meteo, sous licence CC BY 4.0. Marées : prédictions SHOM.<br>
     Carnet et code : &copy; 2026 Marius Amalric, tous droits réservés. Cartographie Leaflet sous licence BSD.
+    <details class="sync-bloc">
+      <summary>Synchronisation entre les téléphones</summary>
+      <p>Tant que ces deux champs sont vides, le carnet reste sur cet appareil. Une fois remplis, ce qui est fait, prévu ou ajouté part vers les autres téléphones et revient d'eux. Le code se saisit une fois, il n'est écrit nulle part dans le carnet publié.</p>
+      <input id="sync-url" type="url" autocomplete="off" placeholder="Adresse du service, https://...workers.dev">
+      <input id="sync-code" type="text" autocomplete="off" placeholder="Code famille">
+      <button class="btn" id="sync-tester" type="button">Enregistrer et synchroniser</button>
+      <p id="sync-etat" role="status"></p>
+    </details>
     <span class="maj">
       Version <em id="num-version">?</em>.
       <button class="lien-fond" id="chercher-maj" type="button">Chercher une mise à jour</button>
@@ -1833,6 +1896,14 @@ function trajets(l){
   return out;
 }
 
+/* Appelée quand trajets() ne rend rien : plutôt que le vide, la distance
+   directe, qui ne demande aucun réseau. */
+function trajetSecours(l){
+  const d = volDOiseau(l);
+  if(d == null) return "";
+  return "à vol d'oiseau " + (d < 1 ? Math.round(d * 1000) + " m" : km(d * 1000));
+}
+
 /* Rafraichit tout ce qui affiche un temps de trajet : les fiches de la liste et
    la bulle eventuellement ouverte. Appelee des qu'un routeur repond.
    Sans elle, les appels du .then() de essayer() levaient une ReferenceError que
@@ -1846,13 +1917,38 @@ function majTrajets(){
   });
 }
 
+/* Sans délai d'abandon, un fetch sur un réseau faible reste en attente
+   indéfiniment. Le repli sur le routeur suivant ne part alors jamais, et
+   demande[cle] ne se libère plus : aucun trajet ne se recalcule avant un
+   rechargement complet de la page. Huit secondes, puis c'est un échec, ce qui
+   déclenche le repli déjà écrit. */
+function fetchBref(url, opts, ms){
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms || 8000);
+  return fetch(url, Object.assign({}, opts || {}, {signal: ctrl.signal}))
+    .finally(() => clearTimeout(t));
+}
+
+/* Secours quand aucun routeur ne répond : la distance directe, calculée sur le
+   téléphone sans le moindre réseau. Elle ne remplace pas un temps de route mais
+   dit au moins si c'est à côté ou à l'autre bout du pays bigouden. */
+function volDOiseau(l){
+  if(!maPosition) return null;
+  const R = 6371, rad = Math.PI / 180;
+  const dLat = (l.lat - maPosition.lat) * rad;
+  const dLng = (l.lng - maPosition.lng) * rad;
+  const a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+            Math.cos(maPosition.lat*rad)*Math.cos(l.lat*rad)*Math.sin(dLng/2)*Math.sin(dLng/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
 /* Deux fournisseurs par mode. Si le premier ne repond pas ou renvoie du vide,
    on bascule sur le second, comme pour le fond de carte. */
 function viaOSRM(base){
   return (depart) => {
     const coords = depart.lng + "," + depart.lat + ";" +
                    LIEUX.map(l => l.lng + "," + l.lat).join(";");
-    return fetch(base + coords + "?sources=0&annotations=distance,duration")
+    return fetchBref(base + coords + "?sources=0&annotations=distance,duration")
       .then(r => r.json())
       .then(d => {
         if(!d.distances || !d.durations) return null;
@@ -1871,7 +1967,7 @@ function viaValhalla(costing){
       costing: costing,
       units: "kilometers"
     };
-    return fetch("https://valhalla1.openstreetmap.de/sources_to_targets", {
+    return fetchBref("https://valhalla1.openstreetmap.de/sources_to_targets", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(corps)
@@ -2234,14 +2330,29 @@ function lienTripadvisor(l){
   return l.ta || null;
 }
 
-LIEUX.forEach(l => {
-  const icon = L.divIcon({
+/* ---------- Adresses ajoutées par la famille ----------
+   Elles rejoignent LIEUX au chargement, donc tout ce qui suit les traite comme
+   les autres : carte, liste, recherche, trajets, plan. Elles portent un
+   identifiant propre plutôt que leur nom, pour survivre à un renommage. */
+const CLE_LIEUX = "carnet-beg-meil-lieux";
+let lieuxAjoutes = {};
+try{ lieuxAjoutes = JSON.parse(localStorage.getItem(CLE_LIEUX) || "{}") || {}; }catch(e){ lieuxAjoutes = {}; }
+function ecrireLieux(){ try{ localStorage.setItem(CLE_LIEUX, JSON.stringify(lieuxAjoutes)); }catch(e){} }
+
+function trouverLieu(nom){ return LIEUX.find(x => x.nom === nom); }
+
+/* extraite de la boucle : les adresses ajoutées par la famille arrivent après
+   coup, parfois par synchronisation, et ont besoin du même pictogramme */
+function iconeDe(l){
+  return L.divIcon({
     className:"",
-    html:'<div class="pin'+(l.avalider?" avalider":"")+'" style="background:'+COUL[l.cat]+'"><i>'+EMOJ[l.cat]+'</i></div>',
+    html:'<div class="pin'+(l.avalider?" avalider":"")+(l.ajoute?" ajoute":"")+
+         '" style="background:'+COUL[l.cat]+'"><i>'+EMOJ[l.cat]+'</i></div>',
     iconSize:[32,32], iconAnchor:[16,30], popupAnchor:[0,-28]
   });
-  l.marker = L.marker([l.lat, l.lng], {icon}).addTo(map);
-});
+}
+
+LIEUX.forEach(l => { l.marker = L.marker([l.lat, l.lng], {icon: iconeDe(l)}).addTo(map); });
 
 function contenuBulle(l){
   let html = "<b>"+l.nom+"</b><br>"+l.style;
@@ -2270,6 +2381,31 @@ LIEUX.forEach(l => l.marker.bindPopup(contenuBulle(l)));
    feraient dezoomer la carte loin du sejour */
 const groupe = L.featureGroup(LIEUX.filter(l => l.cat !== "sortie" && !l.avalider).map(l => l.marker));
 map.fitBounds(groupe.getBounds().pad(0.12));
+
+/* Les adresses ajoutées par la famille rejoignent LIEUX ici, donc après le
+   cadrage d'ouverture : une adresse lointaine ne doit pas faire dézoomer.
+   Appelée aussi après chaque synchronisation qui en apporte de nouvelles. */
+function integrerLieuxAjoutes(){
+  Object.keys(lieuxAjoutes).forEach(id => {
+    const a = lieuxAjoutes[id];
+    const dejaLa = LIEUX.find(x => x.id === id);
+    if(a.supprime){
+      if(dejaLa){
+        if(dejaLa.marker) map.removeLayer(dejaLa.marker);
+        LIEUX.splice(LIEUX.indexOf(dejaLa), 1);
+      }
+      return;
+    }
+    if(dejaLa || !Number.isFinite(a.lat) || !Number.isFinite(a.lng)) return;
+    const l = {id:id, cat:a.cat, nom:a.nom, style:a.style || "Ajoutée par la famille",
+               adr:a.adr || "", note:a.note || "", lat:a.lat, lng:a.lng,
+               ajoute:true, parQui:a.par || ""};
+    LIEUX.push(l);
+    l.marker = L.marker([l.lat, l.lng], {icon: iconeDe(l)}).addTo(map);
+    l.marker.bindPopup(contenuBulle(l));
+  });
+}
+integrerLieuxAjoutes();
 
 /* ----- liste ----- */
 const liste = document.getElementById("liste");
@@ -2368,6 +2504,7 @@ function basculerFait(nom){
   majBoutonFaits();
   rendu();
   rendreHistorique();
+  pousserSync();
 }
 
 /* Corriger l'heure : on coche souvent le soir pour une visite du matin. */
@@ -2378,6 +2515,7 @@ function daterVisite(nom, iso){
   ecrireVisites();
   rendu();
   rendreHistorique();
+  pousserSync();
 }
 
 /* Corriger l'activité : on s'est trompé de fiche en cochant. L'ancienne visite
@@ -2394,6 +2532,7 @@ function changerLieuVisite(ancien, nouveau){
   majBoutonFaits();
   rendu();
   rendreHistorique();
+  pousserSync();
 }
 
 /* La journee se calcule en heure de Paris, pas en UTC : une visite de 23h30
@@ -2592,9 +2731,10 @@ function corpsFiche(l){
     h += '<p class="ligne"><span class="k">📞</span><span class="v"><a href="tel:'+brut+'">'+l.tel+"</a></span></p>";
   }
   const tr = trajets(l);
-  if(tr.length){
+  const secours = tr.length ? "" : trajetSecours(l);
+  if(tr.length || secours){
     h += '<div class="trajets">';
-    tr.forEach(t => { h += '<span class="trajet">'+t+"</span>"; });
+    (tr.length ? tr : [secours]).forEach(t => { h += '<span class="trajet">'+t+"</span>"; });
     h += "</div>";
   }
   h += '<div class="actions">';
@@ -2761,6 +2901,69 @@ document.getElementById("bascule-faits").addEventListener("click", () => {
 });
 majBoutonFaits();
 
+/* ---------- Synchronisation entre téléphones ----------
+   Tant qu'aucune adresse de service n'est saisie, le carnet reste purement
+   local et se comporte exactement comme avant. Dès qu'elle l'est, chaque
+   changement part et l'état complet revient, fusionné clé par clé : la
+   modification la plus récente gagne, d'après son horodatage.
+   Tout est écrit en local d'abord : couper le réseau ne bloque rien. */
+const CLE_SYNC = "carnet-beg-meil-sync";
+let sync = {url:"", code:""};
+try{ sync = JSON.parse(localStorage.getItem(CLE_SYNC) || "null") || {url:"",code:""}; }catch(e){}
+let syncEnCours = false;
+
+function ecrireSync(){ try{ localStorage.setItem(CLE_SYNC, JSON.stringify(sync)); }catch(e){} }
+
+function etatSync(txt){
+  const e = document.getElementById("sync-etat");
+  if(e) e.textContent = txt || "";
+}
+
+function fusionnerDans(local, distant){
+  let change = false;
+  Object.keys(distant || {}).forEach(k => {
+    const d = distant[k];
+    if(!d || typeof d !== "object") return;
+    const l = local[k];
+    /* strictement plus recent : a egalite on garde le local, ce qui rend la
+       fusion stable quel que soit l'ordre des echanges */
+    if(!l || String(d.maj || "") > String(l.maj || "")){ local[k] = d; change = true; }
+  });
+  return change;
+}
+
+function pousserSync(){
+  if(!sync.url || !sync.code || syncEnCours) return;
+  if(navigator.onLine === false){ etatSync("Hors ligne, en attente de réseau."); return; }
+  syncEnCours = true;
+  etatSync("Synchronisation...");
+  const ctrl = new AbortController();
+  const minuteur = setTimeout(() => ctrl.abort(), 8000);
+  fetch(sync.url, {
+    method: "POST",
+    headers: {"content-type": "application/json", "x-code": sync.code},
+    body: JSON.stringify({visites: visites, plan: plan, lieux: lieuxAjoutes}),
+    signal: ctrl.signal
+  })
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(d => {
+      const avantLieux = JSON.stringify(Object.keys(lieuxAjoutes).sort());
+      let ch = fusionnerDans(visites, d.visites);
+      ch = fusionnerDans(plan, d.plan) || ch;
+      ch = fusionnerDans(lieuxAjoutes, d.lieux) || ch;
+      ecrireVisites(); ecrirePlan(); ecrireLieux();
+      if(JSON.stringify(Object.keys(lieuxAjoutes).sort()) !== avantLieux) integrerLieuxAjoutes();
+      if(ch){ majBoutonFaits(); rendu(); rendreHistorique(); rendrePlan(); }
+      etatSync("À jour.");
+    })
+    .catch(err => {
+      etatSync(err === 401 ? "Code famille refusé."
+             : err === 404 ? "Adresse du service introuvable."
+             : "Service injoignable, les modifications repartiront plus tard.");
+    })
+    .finally(() => { clearTimeout(minuteur); syncEnCours = false; });
+}
+
 /* ---------- Onglets ----------
    Cinq sections, une seule visible à la fois. La carte doit reprendre ses
    mesures quand son onglet reparait : masquée, Leaflet la croit de taille
@@ -2798,6 +3001,16 @@ let sejour = {debut:"", fin:""};
 try{ plan = JSON.parse(localStorage.getItem(CLE_PLAN) || "{}") || {}; }catch(e){ plan = {}; }
 try{ sejour = JSON.parse(localStorage.getItem(CLE_SEJOUR) || "null") || {debut:"",fin:""}; }catch(e){}
 
+/* Le plan est un dictionnaire plat, comme les visites : une entrée par couple
+   journée et adresse. C'est ce qui permet de fusionner entre téléphones ligne
+   par ligne, et de savoir qui a posé quoi. */
+function clePlan(jour, nom){ return jour + "|" + nom; }
+function itemsDuJour(jour){
+  return Object.keys(plan)
+    .map(k => plan[k])
+    .filter(p => p && p.jour === jour && !p.supprime)
+    .sort((a, b) => (a.maj < b.maj ? -1 : 1));
+}
 function ecrirePlan(){ try{ localStorage.setItem(CLE_PLAN, JSON.stringify(plan)); }catch(e){} }
 function ecrireSejour(){ try{ localStorage.setItem(CLE_SEJOUR, JSON.stringify(sejour)); }catch(e){} }
 
@@ -2851,24 +3064,26 @@ function rendrePlan(){
   }
   let h = "";
   jours.forEach(iso => {
-    const items = plan[iso] || [];
+    const items = itemsDuJour(iso);
+    const noms = items.map(p => p.nom);
     h += '<div class="plan-jour" data-jour="' + iso + '">';
     h += '<p class="plan-date">' + libelleJour(iso) + "</p>";
     const m = mareeCourte(iso);
     if(m) h += '<p class="plan-maree">' + m + "</p>";
     if(items.length){
       h += '<ul class="plan-items">';
-      items.forEach(nom => {
-        const l = LIEUX.find(x => x.nom === nom);
+      items.forEach(p => {
+        const l = trouverLieu(p.nom);
         h += '<li class="plan-item" style="--cat:' + (l ? COUL[l.cat] : "#3D5A63") + '">';
-        h += '<span class="plan-pastille"></span><span class="plan-nom">' + esc(nom) + "</span>";
-        h += '<button type="button" class="plan-oter" data-nom="' + esc(nom) +
-             '" aria-label="Retirer ' + esc(nom) + '">×</button></li>';
+        h += '<span class="plan-pastille"></span><span class="plan-nom">' + esc(p.nom) + "</span>";
+        if(p.par) h += '<span class="plan-par">' + esc(p.par) + "</span>";
+        h += '<button type="button" class="plan-oter" data-nom="' + esc(p.nom) +
+             '" aria-label="Retirer ' + esc(p.nom) + '">×</button></li>';
       });
       h += "</ul>";
     }
     h += '<select class="plan-ajout" aria-label="Ajouter une adresse au ' +
-         libelleJour(iso) + '">' + optionsAdresses(items, "") + "</select>";
+         libelleJour(iso) + '">' + optionsAdresses(noms, "") + "</select>";
     h += "</div>";
   });
   box.innerHTML = h;
@@ -2876,14 +3091,16 @@ function rendrePlan(){
   box.querySelectorAll(".plan-ajout").forEach(s => s.addEventListener("change", () => {
     if(!s.value) return;
     const iso = s.closest(".plan-jour").dataset.jour;
-    plan[iso] = (plan[iso] || []).concat(s.value);
-    ecrirePlan(); rendrePlan();
+    plan[clePlan(iso, s.value)] = {jour: iso, nom: s.value, par: moiQui,
+                                   maj: new Date().toISOString(), supprime: false};
+    ecrirePlan(); rendrePlan(); pousserSync();
   }));
   box.querySelectorAll(".plan-oter").forEach(b => b.addEventListener("click", () => {
     const iso = b.closest(".plan-jour").dataset.jour;
-    plan[iso] = (plan[iso] || []).filter(n => n !== b.dataset.nom);
-    if(!plan[iso].length) delete plan[iso];
-    ecrirePlan(); rendrePlan();
+    const k = clePlan(iso, b.dataset.nom);
+    if(plan[k]) plan[k] = Object.assign({}, plan[k],
+      {supprime: true, par: moiQui, maj: new Date().toISOString()});
+    ecrirePlan(); rendrePlan(); pousserSync();
   }));
 }
 
@@ -3106,6 +3323,55 @@ champFin.value = sejour.fin || "";
 let ongletDepart = "carte";
 try{ ongletDepart = localStorage.getItem(CLE_ONGLET) || "carte"; }catch(e){}
 montrerOnglet(ongletDepart);
+
+/* ---------- Ajouter une adresse ---------- */
+document.getElementById("aj-valider").addEventListener("click", () => {
+  const dire = t => { document.getElementById("aj-etat").textContent = t; };
+  const nom = document.getElementById("aj-nom").value.trim();
+  const adr = document.getElementById("aj-adr").value.trim();
+  const cat = document.getElementById("aj-cat").value;
+  const note = document.getElementById("aj-note").value.trim();
+  if(nom.length < 2) return dire("Il manque le nom du lieu.");
+  if(adr.length < 6) return dire("Il manque une adresse un peu précise, avec la commune.");
+  if(trouverLieu(nom)) return dire("Ce nom existe déjà dans le carnet.");
+  dire("Recherche de l'adresse...");
+  fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(adr))
+    .then(r => r.json())
+    .then(d => {
+      if(!d || !d.length)
+        return dire("Adresse introuvable. Vérifie l'orthographe, et pense à ajouter la commune.");
+      /* identifiant propre : le nom pourra changer sans casser les références */
+      const id = "aj-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7);
+      lieuxAjoutes[id] = {cat: cat, nom: nom, style: "Ajoutée par " + (moiQui || "la famille"),
+                          adr: adr, note: note, lat: +d[0].lat, lng: +d[0].lon,
+                          par: moiQui, maj: new Date().toISOString(), supprime: false};
+      ecrireLieux();
+      integrerLieuxAjoutes();
+      rendu();
+      pousserSync();
+      dire(nom + " rejoint le carnet.");
+      ["aj-nom", "aj-adr", "aj-note"].forEach(i => { document.getElementById(i).value = ""; });
+    })
+    .catch(() => dire("Le service d'adresses ne répond pas. Réessaie avec du réseau."));
+});
+
+/* ---------- Réglages de synchronisation ---------- */
+const champUrl = document.getElementById("sync-url");
+const champCode = document.getElementById("sync-code");
+champUrl.value = sync.url || "";
+champCode.value = sync.code || "";
+document.getElementById("sync-tester").addEventListener("click", () => {
+  sync = {url: champUrl.value.trim(), code: champCode.value.trim()};
+  ecrireSync();
+  if(!sync.url || !sync.code){ etatSync("Il faut renseigner les deux champs."); return; }
+  pousserSync();
+});
+
+/* Echanges automatiques : à l'ouverture, au retour au premier plan, et dès que
+   le réseau revient. Rien ne part tant que les réglages sont vides. */
+if(sync.url && sync.code) pousserSync();
+document.addEventListener("visibilitychange", () => { if(!document.hidden) pousserSync(); });
+window.addEventListener("online", pousserSync);
 
 /* Mise en cache pour l'usage hors reseau. Sans effet si la page est ouverte
    en file:// ou dans un cadre imbrique, l'application marche alors normalement.
