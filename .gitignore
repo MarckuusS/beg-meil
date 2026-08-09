@@ -1,2 +1,6 @@
 # Outillage local, hors du site publié. GitHub Pages servirait ce dossier.
 .claude/
+
+# Cache local de wrangler : identifiant de compte et etat de session,
+# rien a faire dans un depot public.
+.wrangler/
