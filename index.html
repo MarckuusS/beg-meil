@@ -1105,6 +1105,26 @@ svg.leaflet-image-layer.leaflet-interactive path {
   }
   .plan-vide{color:var(--encre-2);font-size:14px}
 
+  /* ---------- a reserver ---------- */
+  .resa-liste{list-style:none;margin:12px 0 0;padding:0}
+  .resa-item{
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--carte);
+    border:1px solid var(--trait);border-left:5px solid var(--cat);border-radius:12px;
+    padding:10px 12px;margin-bottom:8px;
+  }
+  .resa-nom{flex:1 1 100%;font-family:var(--display);font-weight:700;font-size:16px;line-height:1.2}
+  .resa-par{
+    flex:none;font-family:var(--mono);font-size:11px;color:var(--encre-2);
+    background:var(--fond);border-radius:999px;padding:3px 8px;
+  }
+  .resa-etat{
+    flex:1 1 150px;min-width:0;min-height:44px;border:1px solid var(--trait);border-radius:10px;
+    background:var(--fond);padding:8px 9px;font-size:15px;font-family:inherit;color:var(--encre);
+  }
+  .resa-tel{flex:0 0 auto}
+  .resa-sanstel{flex:0 0 auto;font-size:12px;color:var(--encre-2)}
+  .resa-item.resa-reserve{border-left-color:var(--plage);opacity:.7}
+
   /* ---------- selecteur de personne ----------
      Pas de compte ni de mot de passe : on demande simplement qui tient le
      telephone. Une fois choisi, la barre se replie en une ligne discrete pour
@@ -1371,6 +1391,12 @@ svg.leaflet-image-layer.leaflet-interactive path {
       <input id="plan-fin" type="date" min="2026-08-01" max="2026-08-31">
     </div>
     <div id="plan"></div>
+  </section>
+
+  <section class="bloc">
+    <h2>À réserver</h2>
+    <p>Les adresses du carnet qui demandent de s'y prendre à l'avance. Chacun voit où en sont les autres.</p>
+    <div id="reservations"></div>
   </section>
   </div>
 
@@ -3068,7 +3094,7 @@ function pousserSync(){
   fetch(sync.url, {
     method: "POST",
     headers: {"content-type": "application/json", "x-code": sync.code},
-    body: JSON.stringify({visites: visites, plan: plan, lieux: lieuxAjoutes}),
+    body: JSON.stringify({visites: visites, plan: plan, lieux: lieuxAjoutes, resas: resas}),
     signal: ctrl.signal
   })
     .then(r => r.ok ? r.json() : Promise.reject(r.status))
@@ -3077,9 +3103,10 @@ function pousserSync(){
       let ch = fusionnerDans(visites, d.visites);
       ch = fusionnerDans(plan, d.plan) || ch;
       ch = fusionnerDans(lieuxAjoutes, d.lieux) || ch;
-      ecrireVisites(); ecrirePlan(); ecrireLieux();
+      ch = fusionnerDans(resas, d.resas) || ch;
+      ecrireVisites(); ecrirePlan(); ecrireLieux(); ecrireResas();
       if(JSON.stringify(Object.keys(lieuxAjoutes).sort()) !== avantLieux) integrerLieuxAjoutes();
-      if(ch){ majBoutonFaits(); rendu(); rendreHistorique(); rendrePlan(); }
+      if(ch){ majBoutonFaits(); rendu(); rendreHistorique(); rendrePlan(); rendreResas(); }
       etatSync("À jour.");
     })
     .catch(err => {
@@ -3088,6 +3115,59 @@ function pousserSync(){
              : "Service injoignable, les modifications repartiront plus tard.");
     })
     .finally(() => { clearTimeout(minuteur); syncEnCours = false; });
+}
+
+/* ---------- Ce qui se réserve ----------
+   La liste se déduit du carnet plutôt que d'être tenue à la main : une adresse
+   dont la note ou les horaires parlent de réservation y entre d'elle même. */
+const CLE_RESA = "carnet-beg-meil-resa";
+const ETATS_RESA = [["afaire", "À faire"], ["appele", "Appelé, en attente"], ["reserve", "Réservé"]];
+let resas = {};
+try{ resas = JSON.parse(localStorage.getItem(CLE_RESA) || "{}") || {}; }catch(e){ resas = {}; }
+function ecrireResas(){ try{ localStorage.setItem(CLE_RESA, JSON.stringify(resas)); }catch(e){} }
+
+function lieuxAReserver(){
+  return LIEUX.filter(l => {
+    const t = (l.note || "") + " " + (l.horaires || "");
+    /* la négation d'abord : "visite sans réservation" contient le mot mais dit
+       exactement l'inverse. La biscuiterie Garrec entrait ainsi dans la liste. */
+    if(/sans r[ée]servation|ni r[ée]servation|aucune r[ée]servation/i.test(t)) return false;
+    return /r[ée]serv/i.test(t);
+  });
+}
+
+function rendreResas(){
+  const box = document.getElementById("reservations");
+  if(!box) return;
+  const lot = lieuxAReserver();
+  if(!lot.length){ box.innerHTML = '<p class="plan-vide">Rien à réserver dans le carnet.</p>'; return; }
+  let h = '<ul class="resa-liste">';
+  lot.forEach(l => {
+    const r = resas[l.nom] || {};
+    const etat = r.supprime ? "afaire" : (r.etat || "afaire");
+    h += '<li class="resa-item resa-' + etat + '" style="--cat:' + COUL[l.cat] + '">';
+    h += '<span class="resa-nom">' + esc(l.nom) + "</span>";
+    if(r.par && etat !== "afaire") h += '<span class="resa-par">' + esc(r.par) + "</span>";
+    h += '<select class="resa-etat" data-nom="' + esc(l.nom) + '" aria-label="État de ' + esc(l.nom) + '">';
+    ETATS_RESA.forEach(e => {
+      h += '<option value="' + e[0] + '"' + (e[0] === etat ? " selected" : "") + ">" + e[1] + "</option>";
+    });
+    h += "</select>";
+    if(l.tel){
+      const brut = "+33" + l.tel.replace(/-/g, "").slice(1);
+      h += '<a class="btn resa-tel" href="tel:' + brut + '">📞 Appeler</a>';
+    } else {
+      h += '<span class="resa-sanstel">numéro à chercher</span>';
+    }
+    h += "</li>";
+  });
+  box.innerHTML = h + "</ul>";
+
+  box.querySelectorAll(".resa-etat").forEach(s => s.addEventListener("change", () => {
+    resas[s.dataset.nom] = {etat: s.value, par: moiQui,
+                            maj: new Date().toISOString(), supprime: false};
+    ecrireResas(); rendreResas(); pousserSync();
+  }));
 }
 
 /* ---------- Onglets ----------
@@ -3107,7 +3187,7 @@ function montrerOnglet(nom){
     b.setAttribute("aria-pressed", b.dataset.onglet === nom ? "true" : "false"));
   try{ localStorage.setItem(CLE_ONGLET, nom); }catch(e){}
   if(nom === "carte" && typeof map !== "undefined" && map) map.invalidateSize();
-  if(nom === "plan") rendrePlan();
+  if(nom === "plan"){ rendrePlan(); rendreResas(); }
 }
 
 document.getElementById("onglets").addEventListener("click", e => {

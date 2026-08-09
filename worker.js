@@ -9,6 +9,7 @@
      visites  ce qui a été fait, qui et quand
      plan     ce qui est prévu, jour par jour, et par qui
      lieux    les adresses ajoutées à la main par la famille
+     resas    où en est chaque réservation, et qui s'en est occupé
 
    Chacune est un dictionnaire clé vers objet. La fusion est la même pour les
    trois : clé par clé, la modification la plus récente gagne, d'après le champ
@@ -25,7 +26,7 @@ const ORIGINES = [
   "https://marckuuss.github.io",
   "http://localhost:8765"
 ];
-const COLLECTIONS = ["visites", "plan", "lieux"];
+const COLLECTIONS = ["visites", "plan", "lieux", "resas"];
 const CLE = "carnet";
 
 function entetes(origine) {
