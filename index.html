@@ -1009,13 +1009,34 @@ svg.leaflet-image-layer.leaflet-interactive path {
     border:1px solid var(--trait);cursor:pointer;color:inherit;
   }
   .coefcell u{display:block;text-decoration:none;font-size:11px;color:var(--encre-2);line-height:1.4}
-  /* ---------- historique du sejour ---------- */
-  .qui-bloc{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 16px}
-  .qui-bloc label{font-size:13px;color:var(--encre-2)}
-  .qui-bloc input{
-    flex:1 1 150px;min-width:0;min-height:44px;border:1px solid var(--trait);border-radius:10px;
-    background:var(--carte);padding:9px 12px;font-size:16px;font-family:inherit;color:var(--encre);
+  /* ---------- selecteur de personne ----------
+     Pas de compte ni de mot de passe : on demande simplement qui tient le
+     telephone. Une fois choisi, la barre se replie en une ligne discrete pour
+     ne pas manger l'espace au dessus de la carte a chaque ouverture. */
+  .qui-barre{
+    display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+    background:var(--carte);border-bottom:1px solid var(--trait);padding:12px 18px;
   }
+  /* indispensable : sans cette regle, le display:flex ci-dessus l'emporte sur
+     le display:none que le navigateur applique a [hidden], et la barre reste
+     affichee alors que l'attribut est bien pose */
+  .qui-barre[hidden]{display:none}
+  .qui-titre{
+    margin:0;flex:1 1 100%;font-family:var(--mono);font-size:12px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--encre-2);
+  }
+  .qui-choix{display:flex;flex-wrap:wrap;gap:7px}
+  /* une fois le choix fait, la barre disparait entierement : elle mangeait
+     69 px au dessus de la carte a chaque ouverture, pour une information dont
+     on n'a besoin que dans l'historique. Le rappel s'y trouve donc. */
+  .qui-rappel{
+    display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+    margin:10px 0 16px;font-size:13px;color:var(--encre-2);
+  }
+  .qui-rappel b{color:var(--encre)}
+  .qui-rappel:empty{display:none}
+
+  /* ---------- historique du sejour ---------- */
   .histo-jour{margin:0 0 16px}
   .histo-date{
     font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
@@ -1104,6 +1125,16 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <span class="maison">🏠 Restos, commerces, plages et sorties du séjour</span>
   </header>
 
+  <div class="qui-barre" id="qui-barre">
+    <p class="qui-titre" id="qui-titre">Qui utilise ce téléphone ?</p>
+    <div class="qui-choix" id="qui-choix">
+      <button class="chip" type="button" data-qui="Carole" aria-pressed="false">Carole</button>
+      <button class="chip" type="button" data-qui="Jérome" aria-pressed="false">Jérome</button>
+      <button class="chip" type="button" data-qui="Paul" aria-pressed="false">Paul</button>
+      <button class="chip" type="button" data-qui="Marius" aria-pressed="false">Marius</button>
+    </div>
+  </div>
+
   <div class="carte-zone">
     <div id="map"></div>
     <div class="alerte-carte" id="alerte-carte">
@@ -1178,10 +1209,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <section class="bloc">
     <h2>Historique du séjour</h2>
     <p>Ce que vous avez fait, dans l'ordre. Une adresse s'inscrit ici dès que vous la marquez comme faite depuis sa fiche. L'heure se corrige d'un appui, on coche souvent le soir pour une sortie du matin.</p>
-    <div class="qui-bloc">
-      <label for="qui">Qui utilise ce téléphone</label>
-      <input id="qui" type="text" autocomplete="off" placeholder="Ton prénom" maxlength="20">
-    </div>
+    <p class="qui-rappel" id="qui-rappel"></p>
     <div id="historique"></div>
   </section>
 
@@ -2590,15 +2618,38 @@ document.getElementById("bascule-faits").addEventListener("click", () => {
 });
 majBoutonFaits();
 
-/* Le prénom ne sert qu'à savoir qui a coché quoi. Il reste sur l'appareil
-   tant qu'il n'y a pas de synchronisation. */
-const champQui = document.getElementById("qui");
-champQui.value = moiQui;
-champQui.addEventListener("input", e => {
-  moiQui = e.target.value.trim().slice(0, 20);
+/* Qui tient ce téléphone. Simple choix rangé sur l'appareil, sans compte ni
+   mot de passe : il ne sert qu'à signer les visites dans l'historique. */
+const PERSONNES = ["Carole", "Jérome", "Paul", "Marius"];
+
+function majQui(){
+  const barre = document.getElementById("qui-barre");
+  const rappel = document.getElementById("qui-rappel");
+  const connu = PERSONNES.indexOf(moiQui) !== -1;
+  barre.hidden = connu;
+  rappel.innerHTML = connu
+    ? 'Vous cochez en tant que <b>' + esc(moiQui) +
+      '</b>. <button class="lien-fond" type="button" id="qui-changer">Changer</button>'
+    : "";
+  const b = document.getElementById("qui-changer");
+  if(b) b.addEventListener("click", () => {
+    barre.hidden = false;
+    barre.scrollIntoView({behavior: DOUX ? "smooth" : "auto", block:"center"});
+  });
+  document.querySelectorAll("#qui-choix .chip").forEach(c =>
+    c.setAttribute("aria-pressed", c.dataset.qui === moiQui));
+}
+
+document.getElementById("qui-choix").addEventListener("click", e => {
+  const b = e.target.closest(".chip");
+  if(!b) return;
+  moiQui = b.dataset.qui;
   try{ localStorage.setItem(CLE_QUI, moiQui); }catch(err){}
+  majQui();
+  rendreHistorique();
 });
 
+majQui();
 rendreHistorique();
 
 /* ----- marees : aout 2026, port de Concarneau (predictions SHOM) ----- */
