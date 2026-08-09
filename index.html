@@ -1009,6 +1009,59 @@ svg.leaflet-image-layer.leaflet-interactive path {
     border:1px solid var(--trait);cursor:pointer;color:inherit;
   }
   .coefcell u{display:block;text-decoration:none;font-size:11px;color:var(--encre-2);line-height:1.4}
+  /* ---------- onglets ---------- */
+  /* meme piege que la page d'entree : sans cette regle, un display pose par
+     ailleurs l'emporterait sur le display:none de [hidden] */
+  .onglet[hidden]{display:none}
+  .onglets{
+    position:fixed;left:0;right:0;bottom:0;z-index:1500;
+    display:flex;background:var(--carte);border-top:1px solid var(--trait);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .onglets button{
+    flex:1 1 0;min-width:0;min-height:56px;border:0;background:none;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    font-family:var(--mono);font-size:10px;letter-spacing:.03em;text-transform:uppercase;
+    color:var(--encre-2);padding:7px 2px;
+  }
+  .onglets button i{font-style:normal;font-size:19px;line-height:1}
+  .onglets button[aria-pressed="true"]{color:var(--encre);background:var(--fond)}
+  /* de quoi ne pas cacher le pied de page sous la barre fixe */
+  .wrap{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+
+  /* ---------- planification ---------- */
+  .plan-bornes{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:12px 0 18px}
+  .plan-bornes label{font-size:13px;color:var(--encre-2)}
+  .plan-bornes input{
+    flex:1 1 130px;min-width:0;min-height:44px;border:1px solid var(--trait);border-radius:10px;
+    background:var(--carte);padding:8px 10px;font-size:16px;font-family:inherit;color:var(--encre);
+  }
+  .plan-jour{
+    background:var(--carte);border:1px solid var(--trait);border-radius:12px;
+    padding:12px 13px;margin-bottom:10px;
+  }
+  .plan-date{
+    margin:0;font-family:var(--mono);font-size:12px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--encre);
+  }
+  .plan-maree{margin:5px 0 0;font-size:12px;color:var(--encre-2);line-height:1.5}
+  .plan-items{list-style:none;margin:9px 0 0;padding:0}
+  .plan-item{
+    display:flex;align-items:center;gap:9px;min-height:44px;
+    padding:6px 0;border-top:1px solid var(--trait);
+  }
+  .plan-pastille{flex:none;width:9px;height:9px;border-radius:50%;background:var(--cat)}
+  .plan-nom{flex:1;min-width:0;font-size:15px;color:var(--encre)}
+  .plan-oter{
+    flex:none;min-width:44px;min-height:44px;border:0;background:none;cursor:pointer;
+    color:var(--encre-2);font-size:20px;line-height:1;font-family:inherit;
+  }
+  .plan-ajout{
+    width:100%;margin-top:9px;min-height:44px;border:1px dashed var(--trait);border-radius:10px;
+    background:var(--fond);padding:9px 10px;font-size:15px;font-family:inherit;color:var(--encre-2);
+  }
+  .plan-vide{color:var(--encre-2);font-size:14px}
+
   /* ---------- selecteur de personne ----------
      Pas de compte ni de mot de passe : on demande simplement qui tient le
      telephone. Une fois choisi, la barre se replie en une ligne discrete pour
@@ -1062,18 +1115,26 @@ svg.leaflet-image-layer.leaflet-interactive path {
   }
   .histo-liste{list-style:none;margin:0;padding:0}
   .histo-item{
-    display:flex;align-items:center;gap:10px;background:var(--carte);
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--carte);
     border:1px solid var(--trait);border-left:5px solid var(--cat);border-radius:10px;
-    padding:7px 10px;margin-bottom:6px;min-height:44px;
+    padding:8px 10px;margin-bottom:6px;
   }
-  /* champ natif : un appui ouvre le selecteur d'heure du telephone */
-  .histo-heure{
-    flex:none;width:84px;min-height:44px;font-family:var(--mono);font-size:14px;
+  /* champs natifs : un appui ouvre le selecteur du telephone, rien a coder */
+  .histo-date-champ,.histo-heure{
+    flex:none;min-height:44px;font-family:var(--mono);font-size:14px;
     border:1px solid transparent;border-radius:8px;background:var(--fond);
     color:var(--encre);padding:4px 6px;
   }
-  .histo-heure:focus{border-color:var(--trait)}
-  .histo-nom{flex:1;min-width:0;font-family:var(--display);font-weight:700;font-size:16px;line-height:1.2}
+  .histo-date-champ{width:142px}
+  .histo-heure{width:86px}
+  .histo-date-champ:focus,.histo-heure:focus{border-color:var(--trait)}
+  /* l'activite prend sa propre ligne : les quatre controles ne tiennent pas
+     cote a cote sur un telephone */
+  .histo-lieu{
+    flex:1 1 100%;min-width:0;min-height:44px;border:1px solid var(--trait);
+    border-radius:8px;background:var(--carte);padding:8px 9px;
+    font-size:15px;font-family:inherit;color:var(--encre);
+  }
   .histo-par{
     flex:none;font-family:var(--mono);font-size:11px;color:var(--encre-2);
     background:var(--fond);border-radius:999px;padding:3px 8px;
@@ -1161,6 +1222,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <span class="maison">🏠 Restos, commerces, plages et sorties du séjour</span>
   </header>
 
+  <div class="onglet" id="onglet-carte">
   <div class="carte-zone">
     <div id="map"></div>
     <div class="alerte-carte" id="alerte-carte">
@@ -1200,7 +1262,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <span><i class="dot" style="background:#3B6FA8"></i> 🎟️ sorties</span>
     <span><em>pastille pâle en pointillés : proposition de Claude, à valider</em></span>
   </div>
+  </div>
 
+  <div class="onglet" id="onglet-adresses" hidden>
   <div class="barre">
     <div class="filtres" id="filtres">
       <button class="chip" data-cat="tout" aria-pressed="true">Tout</button>
@@ -1222,7 +1286,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
   <p class="compte" id="compte" role="status"></p>
   <ul class="liste" id="liste"></ul>
+  </div>
 
+  <div class="onglet" id="onglet-marees" hidden>
   <section class="bloc">
     <h2>Marées</h2>
     <p>Port de Concarneau, la référence pour Beg Meil. Heures locales, hauteurs au dessus du zéro des cartes. Touchez un jour pour voir le détail.</p>
@@ -1231,13 +1297,38 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <div id="detail"></div>
     <p class="src">Prédictions SHOM, tout le mois d'août 2026. Les coefficients ont été recoupés avec la capture de ton fichier.</p>
   </section>
+  </div>
 
+  <div class="onglet" id="onglet-plan" hidden>
+  <section class="bloc">
+    <h2>Planification</h2>
+    <p>Ce que vous prévoyez, jour par jour. Chaque journée rappelle ses marées et son coefficient, ce qui décide souvent de l'heure d'une plage.</p>
+    <div class="plan-bornes">
+      <label for="plan-debut">Arrivée</label>
+      <input id="plan-debut" type="date" min="2026-08-01" max="2026-08-31">
+      <label for="plan-fin">Départ</label>
+      <input id="plan-fin" type="date" min="2026-08-01" max="2026-08-31">
+    </div>
+    <div id="plan"></div>
+  </section>
+  </div>
+
+  <div class="onglet" id="onglet-histo" hidden>
   <section class="bloc">
     <h2>Historique du séjour</h2>
     <p>Ce que vous avez fait, dans l'ordre. Une adresse s'inscrit ici dès que vous la marquez comme faite depuis sa fiche. L'heure se corrige d'un appui, on coche souvent le soir pour une sortie du matin.</p>
     <p class="qui-rappel" id="qui-rappel"></p>
     <div id="historique"></div>
   </section>
+  </div>
+
+  <nav class="onglets" id="onglets" aria-label="Sections du carnet">
+    <button type="button" data-onglet="carte"    aria-pressed="true"><i>🗺️</i>Carte</button>
+    <button type="button" data-onglet="adresses" aria-pressed="false"><i>📒</i>Adresses</button>
+    <button type="button" data-onglet="marees"   aria-pressed="false"><i>🌊</i>Marées</button>
+    <button type="button" data-onglet="plan"     aria-pressed="false"><i>🗓️</i>Plan</button>
+    <button type="button" data-onglet="histo"    aria-pressed="false"><i>✓</i>Fait</button>
+  </nav>
 
   <footer>
     Données : fichier BEG_MEIL_2026.xlsx. Les horaires et tarifs sont ceux notés dans le fichier, à vérifier sur place en pleine saison.<br>
@@ -2289,6 +2380,22 @@ function daterVisite(nom, iso){
   rendreHistorique();
 }
 
+/* Corriger l'activité : on s'est trompé de fiche en cochant. L'ancienne visite
+   est marquée supprimée plutôt qu'effacée, comme partout ailleurs, et la
+   nouvelle reprend son horodatage et sa signature. */
+function changerLieuVisite(ancien, nouveau){
+  if(!nouveau || nouveau === ancien) return;
+  const v = visites[ancien];
+  if(!v) return;
+  const maintenant = new Date().toISOString();
+  visites[ancien] = Object.assign({}, v, {supprime:true, maj:maintenant});
+  visites[nouveau] = {le: v.le, par: v.par || "", maj: maintenant, supprime:false};
+  ecrireVisites();
+  majBoutonFaits();
+  rendu();
+  rendreHistorique();
+}
+
 /* La journee se calcule en heure de Paris, pas en UTC : une visite de 23h30
    serait sinon rangee au lendemain. */
 function dateParis(iso){
@@ -2325,10 +2432,13 @@ function rendreHistorique(){
     parJour[j].forEach(v => {
       const l = LIEUX.find(x => x.nom === v.nom);
       h += '<li class="histo-item" style="--cat:' + (l ? COUL[l.cat] : "#3D5A63") + '">';
+      h += '<input class="histo-date-champ" type="date" value="' + dateParis(v.le) +
+           '" data-nom="' + esc(v.nom) + '" aria-label="Date de ' + esc(v.nom) + '">';
       h += '<input class="histo-heure" type="time" value="' + heureChamp(v.le) +
            '" data-nom="' + esc(v.nom) + '" aria-label="Heure de ' + esc(v.nom) + '">';
-      h += '<span class="histo-nom">' + v.nom + '</span>';
       if(v.par) h += '<span class="histo-par">' + esc(v.par) + '</span>';
+      h += '<select class="histo-lieu" data-nom="' + esc(v.nom) +
+           '" aria-label="Activité réalisée">' + optionsAdresses([], v.nom) + '</select>';
       h += '<button type="button" class="histo-oter" data-nom="' + esc(v.nom) +
            '" aria-label="Retirer ' + esc(v.nom) + '">×</button>';
       h += '</li>';
@@ -2344,15 +2454,20 @@ function rendreHistorique(){
 
   box.innerHTML = h;
 
-  box.querySelectorAll(".histo-heure").forEach(i => {
-    i.addEventListener("change", () => {
-      const v = visites[i.dataset.nom];
-      if(!v || !v.le || !i.value) return;
-      /* on ne deplace que l'heure, la journee de la visite ne bouge pas */
-      daterVisite(i.dataset.nom,
-        new Date(dateParis(v.le) + "T" + i.value + ":00+02:00").toISOString());
-    });
-  });
+  box.querySelectorAll(".histo-heure").forEach(i => i.addEventListener("change", () => {
+    const v = visites[i.dataset.nom];
+    if(!v || !v.le || !i.value) return;
+    daterVisite(i.dataset.nom,
+      new Date(dateParis(v.le) + "T" + i.value + ":00+02:00").toISOString());
+  }));
+  box.querySelectorAll(".histo-date-champ").forEach(i => i.addEventListener("change", () => {
+    const v = visites[i.dataset.nom];
+    if(!v || !v.le || !i.value) return;
+    daterVisite(i.dataset.nom,
+      new Date(i.value + "T" + heureChamp(v.le) + ":00+02:00").toISOString());
+  }));
+  box.querySelectorAll(".histo-lieu").forEach(s => s.addEventListener("change", () =>
+    changerLieuVisite(s.dataset.nom, s.value)));
   box.querySelectorAll(".histo-oter").forEach(b =>
     b.addEventListener("click", () => basculerFait(b.dataset.nom)));
 }
@@ -2491,7 +2606,7 @@ function corpsFiche(l){
   h += '<a class="btn waze" href="'+lienWaze(l)+'" target="_blank" rel="noopener">'+ico("fleche")+'Waze</a>';
   h += "</div>";
   h += '<div class="actions"><button type="button" class="btn btn-fait'+(estFait(l.nom)?" actif":"")+'">'+
-       (estFait(l.nom) ? "✓ Déjà fait" : "Marquer comme fait")+"</button></div>";
+       (estFait(l.nom) ? "✓ Déjà fait" : "Fait aujourd'hui")+"</button></div>";
   h += "</div>";
   return h;
 }
@@ -2604,6 +2719,8 @@ function rendu(){
     const l = LIEUX.find(x => x.nom === d.dataset.nom);
     if(!l) return;
     d.querySelector(".btn-carte").addEventListener("click", () => {
+      /* la carte vit dans un autre onglet : il faut y basculer avant de cadrer */
+      montrerOnglet("carte");
       map.setView([l.lat, l.lng], 15, {animate: DOUX});
       l.marker.openPopup();
       document.getElementById("map").scrollIntoView({behavior: DOUX ? "smooth" : "auto", block:"center"});
@@ -2643,6 +2760,132 @@ document.getElementById("bascule-faits").addEventListener("click", () => {
   rendu();
 });
 majBoutonFaits();
+
+/* ---------- Onglets ----------
+   Cinq sections, une seule visible à la fois. La carte doit reprendre ses
+   mesures quand son onglet reparait : masquée, Leaflet la croit de taille
+   nulle et la réaffiche décalée. */
+const CLE_ONGLET = "carnet-beg-meil-onglet";
+const ONGLETS = ["carte", "adresses", "marees", "plan", "histo"];
+
+function montrerOnglet(nom){
+  if(ONGLETS.indexOf(nom) === -1) nom = "carte";
+  ONGLETS.forEach(o => {
+    const el = document.getElementById("onglet-" + o);
+    if(el) el.hidden = (o !== nom);
+  });
+  document.querySelectorAll("#onglets button").forEach(b =>
+    b.setAttribute("aria-pressed", b.dataset.onglet === nom ? "true" : "false"));
+  try{ localStorage.setItem(CLE_ONGLET, nom); }catch(e){}
+  if(nom === "carte" && typeof map !== "undefined" && map) map.invalidateSize();
+  if(nom === "plan") rendrePlan();
+}
+
+document.getElementById("onglets").addEventListener("click", e => {
+  const b = e.target.closest("button[data-onglet]");
+  if(!b) return;
+  montrerOnglet(b.dataset.onglet);
+  window.scrollTo(0, 0);
+});
+
+/* ---------- Planification ----------
+   Les journées du séjour, avec leurs marées rappelées : c'est le coefficient
+   et l'heure de basse mer qui décident souvent du programme d'une journée. */
+const CLE_PLAN = "carnet-beg-meil-plan";
+const CLE_SEJOUR = "carnet-beg-meil-sejour";
+let plan = {};
+let sejour = {debut:"", fin:""};
+try{ plan = JSON.parse(localStorage.getItem(CLE_PLAN) || "{}") || {}; }catch(e){ plan = {}; }
+try{ sejour = JSON.parse(localStorage.getItem(CLE_SEJOUR) || "null") || {debut:"",fin:""}; }catch(e){}
+
+function ecrirePlan(){ try{ localStorage.setItem(CLE_PLAN, JSON.stringify(plan)); }catch(e){} }
+function ecrireSejour(){ try{ localStorage.setItem(CLE_SEJOUR, JSON.stringify(sejour)); }catch(e){} }
+
+function joursDuSejour(){
+  if(!sejour.debut || !sejour.fin || sejour.debut > sejour.fin) return [];
+  const out = [];
+  let t = new Date(sejour.debut + "T12:00:00+02:00");
+  const fin = new Date(sejour.fin + "T12:00:00+02:00");
+  /* garde-fou : au delà de 60 jours on est face à une saisie aberrante */
+  while(t <= fin && out.length < 60){
+    out.push(new Intl.DateTimeFormat("fr-CA", {timeZone:"Europe/Paris"}).format(t));
+    t = new Date(t.getTime() + 86400000);
+  }
+  return out;
+}
+
+/* liste native : elle ouvre le sélecteur du téléphone, sans rien à coder */
+function optionsAdresses(dejaLa, choisi){
+  let h = '<option value="">' + (choisi ? "Changer d'adresse..." : "Ajouter une adresse...") + "</option>";
+  CATS.forEach(c => {
+    const lot = LIEUX.filter(l => l.cat === c.cle && (l.nom === choisi || dejaLa.indexOf(l.nom) === -1));
+    if(!lot.length) return;
+    h += '<optgroup label="' + c.emoji + " " + c.titre + '">';
+    lot.forEach(l => {
+      h += '<option value="' + esc(l.nom) + '"' + (l.nom === choisi ? " selected" : "") +
+           ">" + esc(l.nom) + "</option>";
+    });
+    h += "</optgroup>";
+  });
+  return h;
+}
+
+function mareeCourte(iso){
+  const j = JOURS.find(x => MOIS + String(x.j).padStart(2, "0") === iso);
+  if(!j) return "";
+  const heures = t => j.ev.filter(e => e.type === t).map(e => e.heure).join(" et ");
+  const coefs = j.ev.filter(e => e.coef).map(e => e.coef);
+  const c = coefs.length ? Math.max.apply(null, coefs) : null;
+  return "Basse mer à " + heures("BM") + ", pleine mer à " + heures("PM") +
+         (c ? ", coefficient " + c + (c >= 95 ? ", grande marée" : "") : "");
+}
+
+function rendrePlan(){
+  const box = document.getElementById("plan");
+  if(!box) return;
+  const jours = joursDuSejour();
+  if(!jours.length){
+    box.innerHTML = '<p class="plan-vide">Indique tes dates d\'arrivée et de départ ci dessus, ' +
+                    'et les journées du séjour apparaitront ici.</p>';
+    return;
+  }
+  let h = "";
+  jours.forEach(iso => {
+    const items = plan[iso] || [];
+    h += '<div class="plan-jour" data-jour="' + iso + '">';
+    h += '<p class="plan-date">' + libelleJour(iso) + "</p>";
+    const m = mareeCourte(iso);
+    if(m) h += '<p class="plan-maree">' + m + "</p>";
+    if(items.length){
+      h += '<ul class="plan-items">';
+      items.forEach(nom => {
+        const l = LIEUX.find(x => x.nom === nom);
+        h += '<li class="plan-item" style="--cat:' + (l ? COUL[l.cat] : "#3D5A63") + '">';
+        h += '<span class="plan-pastille"></span><span class="plan-nom">' + esc(nom) + "</span>";
+        h += '<button type="button" class="plan-oter" data-nom="' + esc(nom) +
+             '" aria-label="Retirer ' + esc(nom) + '">×</button></li>';
+      });
+      h += "</ul>";
+    }
+    h += '<select class="plan-ajout" aria-label="Ajouter une adresse au ' +
+         libelleJour(iso) + '">' + optionsAdresses(items, "") + "</select>";
+    h += "</div>";
+  });
+  box.innerHTML = h;
+
+  box.querySelectorAll(".plan-ajout").forEach(s => s.addEventListener("change", () => {
+    if(!s.value) return;
+    const iso = s.closest(".plan-jour").dataset.jour;
+    plan[iso] = (plan[iso] || []).concat(s.value);
+    ecrirePlan(); rendrePlan();
+  }));
+  box.querySelectorAll(".plan-oter").forEach(b => b.addEventListener("click", () => {
+    const iso = b.closest(".plan-jour").dataset.jour;
+    plan[iso] = (plan[iso] || []).filter(n => n !== b.dataset.nom);
+    if(!plan[iso].length) delete plan[iso];
+    ecrirePlan(); rendrePlan();
+  }));
+}
 
 /* Qui tient ce téléphone. Simple choix rangé sur l'appareil, sans compte ni
    mot de passe : il ne sert qu'à signer les visites dans l'historique. */
@@ -2844,6 +3087,25 @@ setInterval(rendreMarees, 60000);
 
 rendu();
 chargerUV();
+
+/* Dates du séjour. Sans elles, le planificateur le dit plutôt que de dérouler
+   les 31 jours d'août. */
+const champDebut = document.getElementById("plan-debut");
+const champFin = document.getElementById("plan-fin");
+champDebut.value = sejour.debut || "";
+champFin.value = sejour.fin || "";
+[champDebut, champFin].forEach(c => c.addEventListener("change", () => {
+  sejour = {debut: champDebut.value, fin: champFin.value};
+  ecrireSejour();
+  rendrePlan();
+}));
+
+/* En dernier : montrerOnglet peut appeler rendrePlan, qui a besoin des marées
+   et de la liste, toutes deux construites au dessus. On rouvre sur l'onglet
+   quitté, la carte au tout premier lancement. */
+let ongletDepart = "carte";
+try{ ongletDepart = localStorage.getItem(CLE_ONGLET) || "carte"; }catch(e){}
+montrerOnglet(ongletDepart);
 
 /* Mise en cache pour l'usage hors reseau. Sans effet si la page est ouverte
    en file:// ou dans un cadre imbrique, l'application marche alors normalement.
