@@ -1427,14 +1427,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     Le bouton TripAdvisor n'apparait que sur les adresses qui ont une fiche vérifiée. Les plages, le Leclerc, la boulangerie et la chasse aux Kuriosités n'en ont pas.<br>
     Fond de carte et routage : OpenStreetMap. Indice UV : Open-Meteo, sous licence CC BY 4.0. Marées : prédictions SHOM.<br>
     Carnet et code : &copy; 2026 Marius Amalric, tous droits réservés. Cartographie Leaflet sous licence BSD.
-    <details class="sync-bloc">
-      <summary>Synchronisation entre les téléphones</summary>
-      <p>Tant que ces deux champs sont vides, le carnet reste sur cet appareil. Une fois remplis, ce qui est fait, prévu ou ajouté part vers les autres téléphones et revient d'eux. Le code se saisit une fois, il n'est écrit nulle part dans le carnet publié.</p>
-      <input id="sync-url" type="url" autocomplete="off" placeholder="Adresse du service, https://...workers.dev">
-      <input id="sync-code" type="text" autocomplete="off" placeholder="Code famille">
-      <button class="btn" id="sync-tester" type="button">Enregistrer et synchroniser</button>
-      <p id="sync-etat" role="status"></p>
-    </details>
+    Ce qui est fait, prévu, réservé ou ajouté circule entre les quatre téléphones, sans réglage ni compte. <em id="sync-etat" role="status"></em><br>
     <span class="maj">
       Version <em id="num-version">?</em>.
       <button class="lien-fond" id="chercher-maj" type="button">Chercher une mise à jour</button>
@@ -3059,12 +3052,16 @@ majBoutonFaits();
    changement part et l'état complet revient, fusionné clé par clé : la
    modification la plus récente gagne, d'après son horodatage.
    Tout est écrit en local d'abord : couper le réseau ne bloque rien. */
-const CLE_SYNC = "carnet-beg-meil-sync";
-let sync = {url:"", code:""};
-try{ sync = JSON.parse(localStorage.getItem(CLE_SYNC) || "null") || {url:"",code:""}; }catch(e){}
+/* Adresse et code écrits ici plutôt que saisis sur chaque téléphone : deux des
+   quatre utilisateurs ne sont pas à l'aise avec l'informatique, et une
+   synchronisation que personne ne configure vaut mieux qu'une synchronisation
+   parfaite que personne n'active.
+   Contrepartie assumée : le dépôt étant public, ce code l'est aussi, donc
+   quiconque le trouve peut lire et modifier le carnet de la famille. */
+const SYNC_URL = "https://carnet-beg-meil.marius-amalric45.workers.dev/";
+const SYNC_CODE = "d2ge9ivrku26mmfm49knta5w";
+let sync = {url: SYNC_URL, code: SYNC_CODE};
 let syncEnCours = false;
-
-function ecrireSync(){ try{ localStorage.setItem(CLE_SYNC, JSON.stringify(sync)); }catch(e){} }
 
 function etatSync(txt){
   const e = document.getElementById("sync-etat");
@@ -3557,21 +3554,9 @@ document.getElementById("aj-valider").addEventListener("click", () => {
     .catch(() => dire("Le service d'adresses ne répond pas. Réessaie avec du réseau."));
 });
 
-/* ---------- Réglages de synchronisation ---------- */
-const champUrl = document.getElementById("sync-url");
-const champCode = document.getElementById("sync-code");
-champUrl.value = sync.url || "";
-champCode.value = sync.code || "";
-document.getElementById("sync-tester").addEventListener("click", () => {
-  sync = {url: champUrl.value.trim(), code: champCode.value.trim()};
-  ecrireSync();
-  if(!sync.url || !sync.code){ etatSync("Il faut renseigner les deux champs."); return; }
-  pousserSync();
-});
-
 /* Echanges automatiques : à l'ouverture, au retour au premier plan, et dès que
-   le réseau revient. Rien ne part tant que les réglages sont vides. */
-if(sync.url && sync.code) pousserSync();
+   le réseau revient. Aucun réglage à faire sur les téléphones. */
+pousserSync();
 document.addEventListener("visibilitychange", () => { if(!document.hidden) pousserSync(); });
 window.addEventListener("online", pousserSync);
 
