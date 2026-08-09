@@ -1033,7 +1033,10 @@ svg.leaflet-image-layer.leaflet-interactive path {
     font-family:var(--display);font-weight:400;font-size:40px;line-height:1.05;
     letter-spacing:-.02em;margin:10px 0 0;color:var(--encre);
   }
-  .page-qui-titre em{font-style:italic}
+  /* h1 em porte color:var(--sable), pensé pour le bandeau sombre de l'en-tête.
+     Sur le fond clair de cet écran, ce sable pâle tombait à 1,1 de contraste et
+     le mot disparaissait. Ocre profond : même chaleur, 5,0 de contraste. */
+  .page-qui-titre em{font-style:italic;color:#8A5A00}
   .page-qui-sous{margin:22px 0 0;font-size:16px;color:var(--encre)}
   .page-qui-choix{display:flex;flex-direction:column;gap:10px;margin-top:18px}
   .page-qui-choix .btn{width:100%;min-height:52px;font-size:17px}
