@@ -1,0 +1,21 @@
+# Configuration de déploiement du service de synchronisation.
+# Ne concerne pas le site : celui-ci reste sur GitHub Pages, inchangé.
+#
+# Ce fichier décrit tout ce que le tableau de bord demandait de cliquer :
+# le nom du service, le fichier à exécuter, la liaison vers le stockage,
+# et l'activation de l'adresse publique.
+#
+# Le code famille n'est PAS ici. C'est un secret, il se pose par une commande
+# à part et n'apparait dans aucun fichier du dépôt.
+
+name = "carnet-beg-meil"
+main = "worker.js"
+compatibility_date = "2026-08-01"
+
+# l'adresse publique en .workers.dev, que le carnet appellera
+workers_dev = true
+
+# le stockage partagé, déjà créé
+[[kv_namespaces]]
+binding = "CARNET"
+id = "8198a9359ebe4551906326a7e9cb1645"
