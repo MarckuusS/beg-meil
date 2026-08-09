@@ -918,6 +918,12 @@ svg.leaflet-image-layer.leaflet-interactive path {
   }
   .sous-tete::-webkit-details-marker{display:none}
   details[open] > .sous-tete .chevron{transform:rotate(-135deg);margin-top:2px}
+  /* raccourci de coche, dans l'en-tete du rang */
+  .rang-fait{
+    flex:none;min-width:44px;min-height:44px;border:0;background:none;cursor:pointer;
+    font-size:17px;line-height:1;color:var(--encre-2);font-family:inherit;
+  }
+  .rang-fait.actif{color:var(--plage)}
   .rang details[open] > .rang-tete{background:var(--fond)}
   .rang details[open] .rang-nom{color:var(--cat)}
   .fiche{padding:2px 13px 13px;background:var(--fond)}
@@ -1784,24 +1790,34 @@ const LIEUX = [
    retenu que si les deux le disent, pour ne pas alarmer a tort.
    Table separee, pour ne pas alourdir les entrees de LIEUX. */
 const PLAGES_INFO = {
-  "Plage de Bot Conan":              {vent:"Abritée des vents d'ouest, de sud-ouest et de nord-ouest", maree:"tres_sensible"},
-  "Plage de Kerveltrec":             {vent:"Abritée des vents d'ouest, de sud-ouest et de nord-ouest", maree:"tres_sensible"},
-  "Plage des Dunes":                 {vent:"Abritée des vents de nord et de nord-est, exposée plein sud", maree:"sensible"},
-  "Plage du Cap-Coz":                {vent:"Abritée des vents d'ouest, de nord-ouest et de nord", maree:"tres_sensible"},
-  "Plage de Kerambigorn":            {vent:"Abritée des vents de nord et de nord-est, exposée plein sud", maree:"sensible"},
-  "Plage de Cleut Rouz":             {vent:"Abritée des vents de nord et de nord-est, exposée plein sud", maree:"sensible"},
-  "Plage de Kerler":                 {vent:"Abritée des vents de nord et de nord-est", maree:"tres_sensible"},
-  "Plage de la Pointe de Mousterlin":{vent:"Très peu abritée, mais on peut changer de côté de la pointe selon le vent", maree:"tres_sensible"},
-  "Plage de Kerleven":               {vent:"La plus abritée du carnet : protégée des vents de nord, nord-est, nord-ouest, est et ouest", maree:"tres_sensible"},
-  "Plage du Trez":                   {vent:"Abritée des vents de nord, de nord-est et d'est", maree:"sensible"},
-  "Plage des Sables Blancs":         {vent:"Abritée des vents d'est, de nord-est et de sud-est par la ville", maree:"sensible"},
-  "Plage du Treustel":               {vent:"Abritée des vents de nord et de nord-ouest", maree:"sensible"},
-  "Plage de Langoz":                 {vent:"Abritée des vents de nord, de nord-ouest et d'ouest", maree:"tres_sensible"}
+  "Plage de Bot Conan":              {vent:"Abritée des vents d'ouest, de sud-ouest et de nord-ouest", maree:"tres_sensible", secteurs:["O","SO","NO"]},
+  "Plage de Kerveltrec":             {vent:"Abritée des vents d'ouest, de sud-ouest et de nord-ouest", maree:"tres_sensible", secteurs:["O","SO","NO"]},
+  "Plage des Dunes":                 {vent:"Abritée des vents de nord et de nord-est, exposée plein sud", maree:"sensible", secteurs:["N","NE"]},
+  "Plage du Cap-Coz":                {vent:"Abritée des vents d'ouest, de nord-ouest et de nord", maree:"tres_sensible", secteurs:["O","NO","N"]},
+  "Plage de Kerambigorn":            {vent:"Abritée des vents de nord et de nord-est, exposée plein sud", maree:"sensible", secteurs:["N","NE"]},
+  "Plage de Cleut Rouz":             {vent:"Abritée des vents de nord et de nord-est, exposée plein sud", maree:"sensible", secteurs:["N","NE"]},
+  "Plage de Kerler":                 {vent:"Abritée des vents de nord et de nord-est", maree:"tres_sensible", secteurs:["N","NE"]},
+  "Plage de la Pointe de Mousterlin":{vent:"Très peu abritée, mais on peut changer de côté de la pointe selon le vent", maree:"tres_sensible", secteurs:[]},
+  "Plage de Kerleven":               {vent:"La plus abritée du carnet : protégée des vents de nord, nord-est, nord-ouest, est et ouest", maree:"tres_sensible", secteurs:["N","NE","NO","E","O"]},
+  "Plage du Trez":                   {vent:"Abritée des vents de nord, de nord-est et d'est", maree:"sensible", secteurs:["N","NE","E"]},
+  "Plage des Sables Blancs":         {vent:"Abritée des vents d'est, de nord-est et de sud-est par la ville", maree:"sensible", secteurs:["E","NE","SE"]},
+  "Plage du Treustel":               {vent:"Abritée des vents de nord et de nord-ouest", maree:"sensible", secteurs:["N","NO"]},
+  "Plage de Langoz":                 {vent:"Abritée des vents de nord, de nord-ouest et d'ouest", maree:"tres_sensible", secteurs:["N","NO","O"]}
 };
 LIEUX.forEach(l => {
   const i = PLAGES_INFO[l.nom];
-  if(i){ l.vent = i.vent; l.maree = i.maree; }
+  if(i){ l.vent = i.vent; l.maree = i.maree; l.secteurs = i.secteurs; }
 });
+
+/* Le vent se donne par la direction d'OU il vient. Huit secteurs suffisent :
+   distinguer le nord-nord-est du nord-est ne change rien au choix d'une plage. */
+const ROSE8 = ["N","NE","E","SE","S","SO","O","NO"];
+function secteur8(deg){
+  if(!Number.isFinite(deg)) return null;
+  return ROSE8[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+}
+const NOM_SECTEUR = {N:"nord", NE:"nord-est", E:"est", SE:"sud-est",
+                     S:"sud", SO:"sud-ouest", O:"ouest", NO:"nord-ouest"};
 
 /* ----- carte ----- */
 const map = L.map("map", {scrollWheelZoom:false}).setView([47.878, -3.998], 13);
@@ -2653,6 +2669,20 @@ function bandeUV(v){
   return {mot:"extrême", conseil:"restez à l'ombre, protection indispensable"};
 }
 
+/* Le verdict du jour, ajouté à la phrase d'exposition figée. Hors ligne, ou
+   sans relevé frais, on n'affiche rien : mieux vaut la phrase seule qu'un
+   classement fondé sur un vent d'avant-hier. */
+function ligneVentDuJour(l){
+  if(!uvJour || uvJour.ventDeg == null || !l.secteurs) return "";
+  if(!uvJour.t || (Date.now() - uvJour.t) > 3 * 3600 * 1000) return "";
+  const s = secteur8(uvJour.ventDeg);
+  if(!s) return "";
+  const abritee = l.secteurs.indexOf(s) !== -1;
+  const force = uvJour.ventKmh != null ? ", " + Math.round(uvJour.ventKmh) + " km/h" : "";
+  return " <b>Aujourd'hui vent de " + NOM_SECTEUR[s] + force + " : " +
+         (abritee ? "elle est abritée" : "elle est exposée") + ".</b>";
+}
+
 function ligneUV(){
   if(uvJour && uvJour.max != null){
     const v = Math.round(uvJour.max);
@@ -2675,13 +2705,18 @@ function chargerUV(){
   /* on rafraichit quand meme : l'UV du matin n'est pas celui de l'apres-midi */
   if(navigator.onLine === false) return;
   fetch("https://api.open-meteo.com/v1/forecast?latitude=" + UV_LAT + "&longitude=" + UV_LNG +
-        "&daily=uv_index_max&current=uv_index&timezone=Europe%2FParis&forecast_days=1")
+        "&daily=uv_index_max&current=uv_index,wind_speed_10m,wind_direction_10m" +
+        "&timezone=Europe%2FParis&forecast_days=1")
     .then(r => r.json())
     .then(d => {
       const max = d && d.daily && d.daily.uv_index_max && d.daily.uv_index_max[0];
       if(max == null) return;
+      const c = d.current || {};
       uvJour = {date: dateDuJour(), max: max,
-                actuel: d.current ? d.current.uv_index : null, t: Date.now()};
+                actuel: c.uv_index != null ? c.uv_index : null,
+                ventDeg: c.wind_direction_10m != null ? c.wind_direction_10m : null,
+                ventKmh: c.wind_speed_10m != null ? c.wind_speed_10m : null,
+                t: Date.now()};
       try{ localStorage.setItem(CLE_UV, JSON.stringify(uvJour)); }catch(e){}
       rendu();
     })
@@ -2698,15 +2733,34 @@ function mareeDuJour(){
   return JOURS.find(d => d.j === +auj.slice(-2)) || null;
 }
 
+/* Le prochain évènement de marée, quelle que soit la journée. Sert deux fois :
+   au bandeau de l'onglet Marées, et aux fiches de plage. */
+function prochaineMaree(){
+  const now = new Date();
+  let suivant = null;
+  JOURS.forEach(d => d.ev.forEach(e => {
+    const t = quand(d.j, e.heure);
+    if(!suivant && t > now) suivant = {d:d, e:e, t:t};
+  }));
+  return suivant;
+}
+
+/* Quatre horaires demandent un effort de lecture. Ce qui décide vraiment de
+   l'heure d'une plage, c'est le sens de la marée et le temps qui reste. */
 function ligneMaree(){
+  const s = prochaineMaree();
   const d = mareeDuJour();
-  if(!d) return "";
-  const heures = t => d.ev.filter(e => e.type === t).map(e => e.heure).join(" et ");
-  const coefs = d.ev.filter(e => e.coef).map(e => e.coef);
-  const bm = heures("BM"), pm = heures("PM");
-  if(!bm && !pm) return "";
-  return "Aujourd'hui, basse mer à " + bm + ", pleine mer à " + pm +
-         (coefs.length ? ", coefficient " + Math.max.apply(null, coefs) : "");
+  const coefs = d ? d.ev.filter(e => e.coef).map(e => e.coef) : [];
+  const detail = d
+    ? " Aujourd'hui, basse mer à " + d.ev.filter(e => e.type === "BM").map(e => e.heure).join(" et ") +
+      ", pleine mer à " + d.ev.filter(e => e.type === "PM").map(e => e.heure).join(" et ") +
+      (coefs.length ? ", coefficient " + Math.max.apply(null, coefs) : "") + "."
+    : "";
+  if(!s) return detail.trim();
+  const monte = s.e.type === "PM";
+  return "La mer " + (monte ? "monte" : "descend") + ", " +
+         (monte ? "pleine" : "basse") + " mer à " + s.e.heure + " " +
+         ecart(s.t - new Date()) + "." + detail;
 }
 
 function corpsFiche(l){
@@ -2716,7 +2770,8 @@ function corpsFiche(l){
   if(l.horaires) h += '<p class="ligne"><span class="k">🕑</span><span class="v">'+l.horaires+"</span></p>";
   if(l.note) h += '<p class="ligne"><span class="k">💬</span><span class="v">'+l.note+"</span></p>";
   if(l.cat === "plage"){
-    if(l.vent) h += '<p class="ligne"><span class="k">🧭</span><span class="v">'+l.vent+"</span></p>";
+    if(l.vent) h += '<p class="ligne"><span class="k">🧭</span><span class="v">'+l.vent+
+                    ligneVentDuJour(l)+"</span></p>";
     const lm = ligneMaree();
     const bouge = l.maree === "tres_sensible"
       ? "Cette plage change beaucoup entre haute et basse mer : regarde l'heure avant d'y aller."
@@ -2769,7 +2824,10 @@ function rangFiche(l){
   h += '<summary class="rang-tete">';
   h += '<span class="rang-titre"><span class="rang-nom">'+l.nom+"</span>";
   h += '<span class="rang-style">'+l.style+"</span></span>";
-  if(fait) h += '<span class="fait-marque" title="Déjà fait">✓</span>';
+  /* cocher sans déplier : le geste se répète plusieurs fois par soir */
+  h += '<button type="button" class="rang-fait' + (fait ? " actif" : "") + '" data-nom="' +
+       esc(l.nom) + '" aria-label="' + (fait ? "Retirer" : "Marquer") + " " + esc(l.nom) +
+       ' de ce qui est fait">' + (fait ? "✅" : "◯") + "</button>";
   if(l.avalider) h += '<span class="neuf">à valider</span>';
   if(court) h += '<span class="rang-trajet">'+court+"</span>";
   h += "</summary>";
@@ -2868,6 +2926,13 @@ function rendu(){
     const bf = d.querySelector(".btn-fait");
     if(bf) bf.addEventListener("click", () => basculerFait(l.nom));
   });
+  /* le bouton vit dans le <summary> : sans preventDefault, le clic déplierait
+     aussi la fiche, ce qui rendrait le raccourci inutilisable */
+  liste.querySelectorAll(".rang-fait").forEach(b => b.addEventListener("click", e => {
+    e.preventDefault();
+    e.stopPropagation();
+    basculerFait(b.dataset.nom);
+  }));
 }
 
 document.getElementById("filtres").addEventListener("click", e => {
@@ -3244,11 +3309,7 @@ function rendreMarees(){
   const now = new Date();
   const auj = new Intl.DateTimeFormat("fr-CA", {timeZone:"Europe/Paris"}).format(now);
 
-  let suivant = null;
-  JOURS.forEach(d => d.ev.forEach(e => {
-    const t = quand(d.j, e.heure);
-    if(!suivant && t > now) suivant = {d:d, e:e, t:t};
-  }));
+  const suivant = prochaineMaree();
 
   const p = document.getElementById("prochaine");
   if(suivant){
